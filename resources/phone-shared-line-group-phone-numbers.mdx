@@ -1,0 +1,71 @@
+---
+title: "zoom_phone_shared_line_group_phone_numbers — Numbers"
+description: "Assign purchased phone numbers to a Zoom Phone shared line group using the zoom_phone_shared_line_group_phone_numbers Terraform resource."
+---
+
+After purchasing phone numbers in Zoom Phone, you can assign them to a shared line group so that callers who dial those numbers are routed to the group. Each number is identified either by its Zoom number ID or its E.164-formatted number string — you only need to provide one of the two. You must also designate one number as the `primary_number`, which is the number used by desk phones and auto receptionists when routing calls to the group. This resource manages the complete set of numbers assigned to the shared line group — numbers not declared in the configuration are unassigned.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:shared_line_group:admin`
+- `phone:write:shared_line_group:admin`
+- `phone:write:shared_line_group_number:admin`
+- `phone:delete:shared_line_group_number:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_shared_line_group" "example" {
+  display_name     = "terraform-example"
+  extension_number = "1234"
+}
+
+resource "zoom_phone_shared_line_group_phone_numbers" "example" {
+  shared_line_group_id = zoom_phone_shared_line_group.example.id
+  primary_number       = "+1234567890"
+  phone_numbers = [
+    {
+      number = "+1234567890",
+    },
+    {
+      id = "4gAYcVCwTUGGDpYWdFpXxx",
+    },
+  ]
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="shared_line_group_id" type="string" required>
+  The unique identifier of the shared line group to assign phone numbers to. Use the `id` output of a `zoom_phone_shared_line_group` resource.
+</ParamField>
+
+<ParamField path="primary_number" type="string" required>
+  The primary phone number for the shared line group, in E.164 format (e.g., `"+1234567890"`). When multiple direct numbers are assigned, this number is used by desk phones and by auto receptionists routing calls to the group. Must also be present in the `phone_numbers` set.
+</ParamField>
+
+<ParamField path="phone_numbers" type="set of objects" required>
+  The set of phone numbers to assign to the shared line group.
+
+  <Expandable title="properties">
+    <ParamField path="id" type="string">
+      The unique identifier of the phone number as assigned by Zoom. Provide either `id` or `number`.
+    </ParamField>
+    <ParamField path="number" type="string">
+      The phone number in E.164 format (e.g., `"+1234567890"`). Provide either `id` or `number`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Import
+
+Import existing shared line group phone number assignments using the shared line group ID:
+
+```bash
+# ${shared_line_group_id}
+terraform import zoom_phone_shared_line_group_phone_numbers.example wGJDBcnJQC6tV86BbtlXXX
+```

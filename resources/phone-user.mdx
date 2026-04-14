@@ -1,0 +1,83 @@
+---
+title: "zoom_phone_user — Configure a Zoom Phone user"
+description: "Use the zoom_phone_user resource to configure an existing Zoom user within Zoom Phone, assigning extension numbers, sites, and settings templates."
+---
+
+The `zoom_phone_user` resource configures an existing Zoom user's Zoom Phone settings. It does not create a new Zoom user account — the user must already exist in your Zoom account. Use this resource to assign the user to a phone site, set their extension number, link an emergency address, or apply a settings template.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `user:update:user:admin`
+- `phone:read:user:admin`
+- `phone:update:user:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_user" "example" {
+  user_id          = "AAggbuS-Q6aXXcsv2wnug"
+  extension_number = 101
+}
+```
+
+With site assignment and settings template:
+
+```hcl
+resource "zoom_phone_user" "example" {
+  user_id          = "AAggbuS-Q6aXXcsv2wnug"
+  extension_number = 101
+  site_id          = zoom_phone_site.headquarters.id
+  template_id      = "tpl_abc123"
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="user_id" type="string" required>
+  The ID of the existing Zoom user to configure in Zoom Phone.
+</ParamField>
+
+### Optional
+
+<ParamField path="extension_number" type="number">
+  The extension number for the user. Must be at least 3 digits; in practice most accounts limit this to 6 digits, though Zoom support can increase the limit.
+</ParamField>
+
+<ParamField path="site_id" type="string">
+  The unique identifier of the phone site to assign this user to. Required when multiple sites are enabled on the account.
+</ParamField>
+
+<ParamField path="emergency_address_id" type="string">
+  The ID of the emergency address to associate with this user.
+</ParamField>
+
+<ParamField path="template_id" type="string">
+  The ID of a settings template to apply to the user. When `site_id` is also set, the provider looks for the template within that site. The template takes precedence over any individual policy fields if both are specified.
+</ParamField>
+
+### Read-only
+
+<ResponseField name="phone_user_id" type="string">
+  The Zoom Phone-specific user ID assigned by Zoom.
+</ResponseField>
+
+<ResponseField name="extension_id" type="string">
+  The extension ID assigned by Zoom.
+</ResponseField>
+
+<ResponseField name="cost_center" type="string">
+  The cost center name associated with the user.
+</ResponseField>
+
+## Import
+
+Import an existing Zoom Phone user configuration using the Zoom user ID:
+
+```bash
+# ${user_id}
+terraform import zoom_phone_user.example AAggbuS-Q6aXXcsv2wnug
+```

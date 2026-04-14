@@ -1,0 +1,115 @@
+---
+title: "zoom_phone_site data source"
+description: "Read configuration details of a single Zoom Phone site by ID, including its country, SIP zone, main auto receptionist, and short extension settings."
+---
+
+Use the `zoom_phone_site` data source to look up the configuration details of a specific Zoom Phone site. Sites let you organize phone users across locations — for example, by office or region. Reference this data source when you need to pass site metadata such as the SIP zone, country, or main auto receptionist into other resources.
+
+## API permissions
+
+The following OAuth scope is required to use this data source:
+
+- `phone:read:site:admin`
+
+## Example usage
+
+```hcl
+data "zoom_phone_site" "example" {
+  id = "example-site-id"
+}
+
+output "site_name" {
+  value = data.zoom_phone_site.example.name
+}
+```
+
+## Schema
+
+### Required arguments
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the Zoom Phone site.
+</ParamField>
+
+### Returned attributes
+
+<ResponseField name="name" type="string">
+  The display name of the site.
+</ResponseField>
+
+<ResponseField name="level" type="string">
+  The level of the site within the account hierarchy.
+</ResponseField>
+
+<ResponseField name="site_code" type="number">
+  The numeric site code assigned to the site.
+</ResponseField>
+
+<ResponseField name="caller_id_name" type="string">
+  The caller ID name shown to called parties when an outbound call uses a number as the caller ID. Maximum 15 characters.
+</ResponseField>
+
+<ResponseField name="country" type="object">
+  The country in which the site is based.
+
+  <Expandable title="properties">
+    <ResponseField name="code" type="string">
+      The two-letter country code (ISO 3166-1 alpha-2).
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The full name of the country.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="main_auto_receptionist" type="object">
+  The main auto receptionist configured for this site.
+
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The unique identifier of the auto receptionist.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The display name of the auto receptionist.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="short_extension" type="object">
+  Short extension settings for the site.
+
+  <Expandable title="properties">
+    <ResponseField name="length" type="number">
+      The number of digits in short extension numbers (1–6). Defaults to `3`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="sip_zone" type="object">
+  The SIP zone assigned to the site. Selecting a nearby SIP zone can reduce latency and improve call quality.
+
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The unique identifier of the SIP zone.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The name of the SIP zone.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="india_city" type="string">
+  The city for India-based sites. Only applies to India accounts.
+</ResponseField>
+
+<ResponseField name="india_entity_name" type="string">
+  The entity name required when an Indian SIP zone is selected. Only applies to India accounts.
+</ResponseField>
+
+<ResponseField name="india_sdca_npa" type="string">
+  The Short Distance Calling Area (SDCA) Numbering Plan Area (NPA) for India-based sites. Linked to `india_state_code`. Only applies to India accounts.
+</ResponseField>
+
+<ResponseField name="india_state_code" type="string">
+  The state code for India-based sites. Only applies to India accounts.
+</ResponseField>

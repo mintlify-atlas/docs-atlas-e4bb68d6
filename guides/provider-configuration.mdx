@@ -1,0 +1,155 @@
+---
+title: "Configure the Zoom Terraform provider"
+description: "Set up credentials, version constraints, and backend configuration for the Zoom Terraform provider in staging and production environments."
+---
+
+The Zoom Terraform provider authenticates with Zoom using server-to-server OAuth credentials. Before you can manage any Zoom Phone resources, you must configure the provider with an account ID, client ID, and client secret obtained from the [Zoom Marketplace](https://marketplace.zoom.us). The provider reads credentials from either provider configuration or environment variables, giving you flexibility across different deployment environments.
+
+## Prerequisites
+
+Create a server-to-server OAuth app in the Zoom Marketplace and note the following values:
+
+- **Account ID** — found on the app's credentials page
+- **Client ID** — found on the app's credentials page
+- **Client Secret** — found on the app's credentials page
+
+Grant the app the API scopes required for the resources you intend to manage. Each resource's documentation lists its required scopes.
+
+## Provider schema
+
+<ParamField path="account_id" type="string">
+  The Account ID for your Zoom account. Can also be set via the `ZOOM_ACCOUNT_ID` environment variable. Zoom uses this to identify which account the OAuth app belongs to.
+</ParamField>
+
+<ParamField path="client_id" type="string">
+  The Client ID of the server-to-server OAuth app. Can also be set via the `ZOOM_CLIENT_ID` environment variable.
+</ParamField>
+
+<ParamField path="client_secret" type="string">
+  The Client Secret of the server-to-server OAuth app. Treated as sensitive; Terraform will not display this value in plan output. Can also be set via the `ZOOM_CLIENT_SECRET` environment variable.
+</ParamField>
+
+## Basic configuration
+
+The minimal provider configuration passes credentials through Terraform variables:
+
+```hcl
+terraform {
+  required_providers {
+    zoom = {
+      source  = "folio-sec/zoom"
+      version = "~> 0.1"
+    }
+  }
+}
+
+provider "zoom" {
+  account_id    = var.zoom_account_id
+  client_id     = var.zoom_client_id
+  client_secret = var.zoom_client_secret
+}
+
+variable "zoom_account_id" {}
+
+variable "zoom_client_id" {}
+
+variable "zoom_client_secret" {
+  sensitive = true
+}
+```
+
+## Version constraints
+
+Use the `~>` operator to allow patch and minor upgrades while preventing breaking major version changes:
+
+```hcl
+# Allow any 0.1.x release
+version = "~> 0.1"
+
+# Allow any 0.x.x release (less strict)
+version = "~> 0"
+
+# Pin to an exact version (most strict)
+version = "= 0.1.4"
+```
+
+<Tip>
+  Prefer `~> 0.1` over an exact pin. This allows non-breaking updates to flow in automatically when you run `terraform init -upgrade`, while still protecting against major version changes that may introduce breaking schema changes.
+</Tip>
+
+## Environment-based configuration
+
+For teams working across multiple Zoom accounts — such as a non-production account for testing and a production account for live users — use Terraform workspaces with workspace-specific `.tfvars` files to keep credentials separate.
+
+<Tabs>
+  <Tab title="Staging workspace">
+    ```hcl
+    # staging.tfvars
+    zoom_account_id    = "abc123_staging"
+    zoom_client_id     = "stg_client_id"
+    zoom_client_secret = "stg_client_secret"
+    ```
+
+    ```bash
+    terraform workspace select staging
+    terraform apply -var-file="staging.tfvars"
+    ```
+  </Tab>
+  <Tab title="Production workspace">
+    ```hcl
+    # production.tfvars
+    zoom_account_id    = "xyz789_prod"
+    zoom_client_id     = "prod_client_id"
+    zoom_client_secret = "prod_client_secret"
+    ```
+
+    ```bash
+    terraform workspace select production
+    terraform apply -var-file="production.tfvars"
+    ```
+  </Tab>
+  <Tab title="Environment variables">
+    If you prefer not to use `.tfvars` files, export the credentials as environment variables before running Terraform. The provider picks them up automatically without any `var` references in your configuration.
+
+    ```bash
+    export ZOOM_ACCOUNT_ID="abc123"
+    export ZOOM_CLIENT_ID="my_client_id"
+    export ZOOM_CLIENT_SECRET="my_client_secret"
+
+    terraform apply
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  Store workspace-specific `.tfvars` files in a secrets manager or CI/CD secret store rather than committing them to version control. Add `*.tfvars` to your `.gitignore` to avoid accidentally committing credentials.
+</Tip>
+
+## Remote backend configuration
+
+For team usage, store Terraform state remotely so that plan and apply operations are consistent across team members and CI/CD pipelines. The example below uses Terraform Cloud, but any supported backend works.
+
+```hcl
+terraform {
+  required_providers {
+    zoom = {
+      source  = "folio-sec/zoom"
+      version = "~> 0.1"
+    }
+  }
+
+  backend "remote" {
+    organization = "your-org"
+
+    workspaces {
+      prefix = "zoom-phone-"
+    }
+  }
+}
+```
+
+With a `prefix`-based workspace configuration, Terraform Cloud workspaces named `zoom-phone-staging` and `zoom-phone-production` map to the `staging` and `production` local workspace names respectively. Store each workspace's `ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, and `ZOOM_CLIENT_SECRET` as sensitive environment variables in the Terraform Cloud workspace settings.
+
+<Note>
+  Never store `client_secret` in plain text in your Terraform configuration files or version control. Use environment variables, a secrets manager (such as AWS Secrets Manager or HashiCorp Vault), or your CI/CD platform's secret injection mechanism.
+</Note>

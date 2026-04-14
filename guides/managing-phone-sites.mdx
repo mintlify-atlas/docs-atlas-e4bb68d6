@@ -1,0 +1,219 @@
+---
+title: "Manage Zoom Phone sites with Terraform"
+description: "Create and configure Zoom Phone sites to organize users by location, including emergency addresses, auto receptionists, and extension ranges."
+---
+
+Zoom Phone sites let you group phone users, call queues, and auto receptionists by physical location — for example, a headquarters site and a regional office site. Each site has its own emergency address, main auto receptionist, and optional short extension numbering scheme. Managing sites with Terraform gives you repeatable, version-controlled site configuration that you can replicate across accounts or environments.
+
+## Create a site
+
+The `zoom_phone_site` resource requires three attributes: a name, a `default_emergency_address` block, and a `main_auto_receptionist` block. Both nested blocks are required at creation time.
+
+```hcl
+resource "zoom_phone_site" "headquarters" {
+  name = "Headquarters"
+
+  main_auto_receptionist = {
+    name = "HQ Main Reception"
+  }
+
+  default_emergency_address = {
+    address_line1 = "123 Main St"
+    address_line2 = "Suite 100"
+    city          = "San Jose"
+    country       = "US"
+    state_code    = "CA"
+    zip           = "95131"
+  }
+}
+```
+
+<Note>
+  Zoom validates the emergency address against its address database. If the address you supply is not an exact match, Zoom substitutes the nearest system-corrected address. Check the resulting state with `terraform show` after applying to confirm the address Zoom recorded.
+</Note>
+
+## Emergency address fields
+
+The `default_emergency_address` block sets the address that emergency services receive when a user at this site dials an emergency number.
+
+<ParamField path="default_emergency_address.address_line1" type="string" required>
+  Street number and name (e.g., `"123 Main St"`).
+</ParamField>
+
+<ParamField path="default_emergency_address.address_line2" type="string">
+  Building, suite, floor, or unit number (e.g., `"Suite 100"`).
+</ParamField>
+
+<ParamField path="default_emergency_address.city" type="string" required>
+  City name.
+</ParamField>
+
+<ParamField path="default_emergency_address.state_code" type="string" required>
+  State or province code (e.g., `"CA"` for California).
+</ParamField>
+
+<ParamField path="default_emergency_address.country" type="string" required>
+  Two-letter ISO 3166-1 alpha-2 country code (e.g., `"US"`).
+</ParamField>
+
+<ParamField path="default_emergency_address.zip" type="string" required>
+  Postal or ZIP code.
+</ParamField>
+
+## Main auto receptionist
+
+Every site requires exactly one main auto receptionist. You supply a display name; Zoom generates the receptionist's ID, which is exposed as a read-only attribute (`main_auto_receptionist.id`) after the resource is created.
+
+```hcl
+resource "zoom_phone_site" "branch_office" {
+  name = "Branch Office - Austin"
+
+  main_auto_receptionist = {
+    name = "Austin Main Reception"
+  }
+
+  default_emergency_address = {
+    address_line1 = "500 Congress Ave"
+    city          = "Austin"
+    country       = "US"
+    state_code    = "TX"
+    zip           = "78701"
+  }
+}
+```
+
+To reference the auto receptionist ID created alongside the site — for example, when configuring IVR routing — use:
+
+```hcl
+zoom_phone_site.branch_office.main_auto_receptionist.id
+```
+
+## Short extension ranges
+
+Short extensions let users dial colleagues with a compact internal number rather than a full extension. Configure the `short_extension` block to define the digit length and the range of numbers available at the site.
+
+```hcl
+resource "zoom_phone_site" "headquarters" {
+  name = "Headquarters"
+
+  main_auto_receptionist = {
+    name = "HQ Main Reception"
+  }
+
+  default_emergency_address = {
+    address_line1 = "123 Main St"
+    city          = "San Jose"
+    country       = "US"
+    state_code    = "CA"
+    zip           = "95131"
+  }
+
+  short_extension = {
+    length = 3
+    ranges = [
+      {
+        range_from = "100"
+        range_to   = "499"
+      },
+      {
+        range_from = "600"
+        range_to   = "999"
+      }
+    ]
+  }
+}
+```
+
+The `length` field accepts values between 1 and 6, and defaults to `3`. After you add a range, newly provisioned extension numbers at this site start from `range_from`.
+
+## Use the data source
+
+When you need to reference a site that already exists in Zoom — for example, to assign a call queue to a pre-existing site — use the `zoom_phone_site` data source to look it up by ID.
+
+```hcl
+data "zoom_phone_site" "existing" {
+  id = "CAUYYsOXRH-xp4hd3cd5A"
+}
+
+resource "zoom_phone_call_queue" "support" {
+  name             = "Support Queue"
+  extension_number = 200
+  site_id          = data.zoom_phone_site.existing.id
+}
+```
+
+You can find the site ID in the Zoom admin portal under **Phone System Management → Company Info → Sites**, or by using the [List Phone Sites](https://marketplace.zoom.us/docs/api-reference/phone/methods#operation/listPhoneSites) API.
+
+## Multi-site organization patterns
+
+For accounts with several offices, define each site in its own `.tf` file or module to keep configurations manageable:
+
+```hcl
+# sites/main.tf
+
+resource "zoom_phone_site" "hq" {
+  name = "Headquarters"
+
+  main_auto_receptionist = {
+    name = "HQ Reception"
+  }
+
+  default_emergency_address = {
+    address_line1 = "123 Main St"
+    city          = "San Jose"
+    country       = "US"
+    state_code    = "CA"
+    zip           = "95131"
+  }
+}
+
+resource "zoom_phone_site" "austin" {
+  name = "Austin Office"
+
+  main_auto_receptionist = {
+    name = "Austin Reception"
+  }
+
+  default_emergency_address = {
+    address_line1 = "500 Congress Ave"
+    city          = "Austin"
+    country       = "US"
+    state_code    = "TX"
+    zip           = "78701"
+  }
+}
+
+resource "zoom_phone_site" "london" {
+  name = "London Office"
+
+  main_auto_receptionist = {
+    name = "London Reception"
+  }
+
+  default_emergency_address = {
+    address_line1 = "1 Canada Square"
+    city          = "London"
+    country       = "GB"
+    state_code    = "ENG"
+    zip           = "E14 5AB"
+  }
+}
+```
+
+Resources such as call queues and auto receptionists can then reference each site by its ID:
+
+```hcl
+resource "zoom_phone_call_queue" "hq_support" {
+  name             = "HQ Support"
+  extension_number = 200
+  site_id          = zoom_phone_site.hq.id
+}
+
+resource "zoom_phone_call_queue" "austin_support" {
+  name             = "Austin Support"
+  extension_number = 200
+  site_id          = zoom_phone_site.austin.id
+}
+```
+
+Extension numbers are scoped per site, so you can reuse the same extension number across different sites without conflict.

@@ -1,0 +1,109 @@
+---
+title: "Authenticate with Server-to-Server OAuth"
+description: "Configure ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET to let the folio-sec/zoom provider authenticate against the Zoom API."
+---
+
+The Zoom Terraform provider uses Zoom's **Server-to-Server OAuth** grant type to authenticate. This flow is designed for machine-to-machine integrations: your Zoom Marketplace app acts as the client, exchanges its credentials for a short-lived access token, and the provider attaches that token to every API request. No user interaction or browser redirect is required.
+
+Before configuring the provider, create a Server-to-Server OAuth app in the [Zoom Marketplace](https://marketplace.zoom.us/user/build) and collect your **Account ID**, **Client ID**, and **Client Secret** from the App Credentials tab.
+
+## Authentication methods
+
+The provider accepts credentials through two methods. Environment variables take precedence only when the corresponding provider argument is absent or `null`—an explicit empty string in HCL is treated as a missing value and triggers an error.
+
+<Tabs>
+  <Tab title="Environment variables">
+    Export the three variables in your shell before running any Terraform command:
+
+    ```bash
+    export ZOOM_ACCOUNT_ID="your-account-id"
+    export ZOOM_CLIENT_ID="your-client-id"
+    export ZOOM_CLIENT_SECRET="your-client-secret"
+    ```
+
+    With the environment variables set, the provider block requires no credential arguments:
+
+    ```hcl main.tf
+    terraform {
+      required_providers {
+        zoom = {
+          source  = "folio-sec/zoom"
+          version = "~> 0.0.0"
+        }
+      }
+    }
+
+    provider "zoom" {}
+    ```
+
+    This approach keeps secrets out of HCL files and works well in CI/CD pipelines where secrets are injected as environment variables by the pipeline platform.
+  </Tab>
+
+  <Tab title="Provider configuration">
+    Pass credentials as HCL variables so they can be supplied at plan/apply time without hardcoding values:
+
+    ```hcl main.tf
+    terraform {
+      required_providers {
+        zoom = {
+          source  = "folio-sec/zoom"
+          version = "~> 0.0.0"
+        }
+      }
+    }
+
+    provider "zoom" {
+      account_id    = var.zoom_account_id
+      client_id     = var.zoom_client_id
+      client_secret = var.zoom_client_secret
+    }
+
+    variable "zoom_account_id" {}
+
+    variable "zoom_client_id" {}
+
+    variable "zoom_client_secret" {
+      sensitive = true
+    }
+    ```
+
+    Pass values at runtime using `-var` flags or a `terraform.tfvars` file:
+
+    ```bash
+    terraform apply \
+      -var="zoom_account_id=$ZOOM_ACCOUNT_ID" \
+      -var="zoom_client_id=$ZOOM_CLIENT_ID" \
+      -var="zoom_client_secret=$ZOOM_CLIENT_SECRET"
+    ```
+
+    <Warning>
+      Never assign a literal `client_secret` value directly in `.tf` files that are committed to source control. Always use variables, environment variables, or a secrets manager to supply the value at runtime. Mark the variable `sensitive = true` so Terraform redacts it from plan output and logs.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Provider schema reference
+
+All three attributes are optional in the schema—the provider falls back to the corresponding environment variable when an attribute is omitted. If neither the attribute nor the environment variable is set, the provider returns an error during `terraform plan` or `terraform apply`.
+
+| Attribute | Environment variable | Type | Description |
+|---|---|---|---|
+| `account_id` | `ZOOM_ACCOUNT_ID` | String | Your Zoom account identifier, found on the App Credentials tab. |
+| `client_id` | `ZOOM_CLIENT_ID` | String | The OAuth client ID for your Server-to-Server app. |
+| `client_secret` | `ZOOM_CLIENT_SECRET` | String (sensitive) | The OAuth client secret. Treated as sensitive; masked in logs. |
+
+## Required API scopes
+
+Each resource and data source requires specific Zoom Phone API scopes granted to your Server-to-Server OAuth app. The provider does not enforce scopes itself—Zoom's API returns a permission error if the app lacks the required scope for a given operation.
+
+<Info>
+  Zoom Phone scopes follow the pattern `phone:<action>:admin`. For most write operations you need `phone:write:admin`; for read-only data sources you need `phone:read:admin`. User-related resources may additionally require `user:read:admin`.
+</Info>
+
+When you encounter a `401` or `403` error from the Zoom API, check that:
+
+1. The Server-to-Server OAuth app is **Activated** in the Zoom Marketplace.
+2. The required scopes are listed under the app's **Scopes** tab.
+3. The credentials you supplied match the app that has those scopes.
+
+Refer to the [Zoom API documentation](https://developers.zoom.us/docs/api/) for the exact scopes required by each endpoint.

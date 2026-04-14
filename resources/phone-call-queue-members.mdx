@@ -1,0 +1,104 @@
+---
+title: "zoom_phone_call_queue_members — Manage queue members"
+description: "Add and manage Zoom Phone users and common areas as members of a call queue using the zoom_phone_call_queue_members Terraform resource."
+---
+
+The `zoom_phone_call_queue_members` resource assigns users and common areas to a call queue. Members are the destinations that receive calls distributed by the queue. You can identify users by their Zoom user ID or email address, and common areas by their common area ID. This resource manages the full member set as a unit — any members not declared in the configuration are removed from the queue.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:list_users:admin`
+- `phone:read:list_call_queue_members:admin`
+- `phone:write:call_queue_member:admin`
+- `phone:delete:call_queue_member:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_call_queue" "example" {
+  name             = "terraform-example"
+  extension_number = "1234"
+}
+
+resource "zoom_phone_call_queue_members" "example" {
+  call_queue_id = zoom_phone_call_queue.example.id
+  common_areas = [
+    {
+      id = "xxxxx-Q6aYBcsv2wJaag"
+    }
+  ]
+  users = [
+    {
+      id = "YYYgNJuS-XXcsv2wJnug"
+    },
+    {
+      email = "mary@example.com"
+    },
+    {
+      email = "john@example.com"
+    },
+  ]
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="call_queue_id" type="string" required>
+  The unique identifier of the call queue to manage members for. Use the `id` output of a `zoom_phone_call_queue` resource.
+</ParamField>
+
+### Optional
+
+<ParamField path="common_areas" type="set of objects">
+  The set of common areas to add as members of the call queue.
+
+  <Expandable title="properties">
+    <ParamField path="id" type="string" required>
+      The unique identifier of the common area.
+    </ParamField>
+    <ResponseField name="extension_id" type="string">
+      The extension ID of the common area, populated by Zoom after the member is added.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The display name of the common area.
+    </ResponseField>
+    <ResponseField name="receive_call" type="boolean">
+      Whether the common area is currently able to receive calls.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="users" type="set of objects">
+  The set of users to add as members of the call queue. Specify each user by `id`, by `email`, or by both.
+
+  <Expandable title="properties">
+    <ParamField path="email" type="string">
+      The email address of the user. Either `id` or `email` must be specified.
+    </ParamField>
+    <ParamField path="id" type="string">
+      The Zoom user ID of the user. Either `id` or `email` must be specified.
+    </ParamField>
+    <ResponseField name="extension_id" type="string">
+      The extension ID of the user, populated by Zoom after the member is added.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The display name of the user.
+    </ResponseField>
+    <ResponseField name="receive_call" type="boolean">
+      Whether the user is currently able to receive calls from the queue.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+## Import
+
+Import existing call queue members using the call queue ID:
+
+```bash
+# ${call_queue_id}
+terraform import zoom_phone_call_queue_members.example wGJDBcnJQC6tV86BbtlXXX
+```

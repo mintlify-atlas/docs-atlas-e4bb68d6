@@ -1,0 +1,68 @@
+---
+title: "zoom_phone_call_queue_phone_numbers — Phone numbers"
+description: "Use the zoom_phone_call_queue_phone_numbers resource to assign purchased phone numbers to a Zoom Phone call queue so callers can dial in directly."
+---
+
+After purchasing phone numbers in Zoom Phone, you can assign them to a call queue so that callers who dial those numbers are routed directly into the queue. Each number is identified by its Zoom number ID or its E.164-formatted number string. This resource manages the complete set of numbers assigned to the queue — numbers not declared in the configuration are unassigned.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:call_queue:admin`
+- `phone:read:list_call_queues:admin`
+- `phone:read:list_numbers:admin`
+- `phone:write:call_queue_number:admin`
+- `phone:delete:call_queue_number:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_call_queue" "example" {
+  name             = "terraform-example"
+  extension_number = "1234"
+}
+
+resource "zoom_phone_call_queue_phone_numbers" "example" {
+  call_queue_id = zoom_phone_call_queue.example.id
+  phone_numbers = [
+    {
+      id = "gFARuKuQQ2qmR4ldyQrViQ",
+      # number = "+12058945456",
+    },
+  ]
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="call_queue_id" type="string" required>
+  The unique identifier of the call queue to assign phone numbers to. Use the `id` output of a `zoom_phone_call_queue` resource.
+</ParamField>
+
+<ParamField path="phone_numbers" type="set of objects" required>
+  The set of phone numbers to assign to the call queue.
+
+  <Expandable title="properties">
+    <ParamField path="id" type="string">
+      The unique identifier of the phone number as assigned by Zoom. Provide either `id` or `number`.
+    </ParamField>
+    <ParamField path="number" type="string">
+      The phone number in E.164 format (e.g., `"+12058945456"`). Provide either `id` or `number`.
+    </ParamField>
+    <ParamField path="source" type="string">
+      The source of the phone number. Allowed values: `internal`, `external`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Import
+
+Import existing call queue phone number assignments using the call queue ID:
+
+```bash
+# ${call_queue_id}
+terraform import zoom_phone_call_queue_phone_numbers.example wGJDBcnJQC6tV86BbtlXXX
+```

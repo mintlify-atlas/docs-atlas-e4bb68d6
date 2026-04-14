@@ -1,0 +1,191 @@
+---
+title: "zoom_phone_phone_numbers data source"
+description: "Use the zoom_phone_phone_numbers data source to list all Zoom Phone numbers in an account, with optional filters for assignment status, type, and site."
+---
+
+Use the `zoom_phone_phone_numbers` data source to list phone numbers provisioned in your Zoom account. You can retrieve all numbers or narrow the results using the `filter` block — for example, to find only unassigned toll-free numbers on a specific site. This data source is useful for looking up a number's ID or assignee before referencing it in other resources.
+
+## API permissions
+
+The following OAuth scope is required to use this data source:
+
+- `phone:read:list_numbers:admin`
+
+## Example usage
+
+```hcl
+# Fetch all phone numbers in the account
+data "zoom_phone_phone_numbers" "all" {}
+
+# Fetch only unassigned numbers
+data "zoom_phone_phone_numbers" "filtered" {
+  filter = {
+    type = "unassigned"
+  }
+}
+
+output "example" {
+  value = data.zoom_phone_phone_numbers.all
+}
+
+output "filtered" {
+  value = data.zoom_phone_phone_numbers.filtered
+}
+
+# Look up a specific number by its E.164 value
+output "search_phone_number" {
+  value = try(
+    data.zoom_phone_phone_numbers.all.phone_numbers[
+      index(data.zoom_phone_phone_numbers.all.phone_numbers.*.number, "+1234567890")
+    ],
+    null
+  )
+}
+```
+
+## Schema
+
+### Optional arguments
+
+<ParamField path="filter" type="object">
+  Narrow the list of returned phone numbers.
+
+  <Expandable title="properties">
+    <ParamField path="type" type="string">
+      Filter by assignment status. Allowed values:
+      - `assigned` — numbers assigned to a user, call queue, auto receptionist, or common area.
+      - `unassigned` — numbers not assigned to anyone.
+      - `all` — include both assigned and unassigned numbers.
+      - `byoc` — return only Bring Your Own Carrier (BYOC) numbers.
+    </ParamField>
+    <ParamField path="extension_type" type="string">
+      Filter assigned numbers by the type of assignee. Only valid when `type` is `assigned`. Allowed values: `user`, `callQueue`, `autoReceptionist`, `commonArea`, `emergencyNumberPool`, `companyLocation`, `meetingService`.
+    </ParamField>
+    <ParamField path="number_type" type="string">
+      Filter by number type. Allowed values: `toll`, `tollfree`.
+    </ParamField>
+    <ParamField path="site_id" type="string">
+      The unique identifier of the site to filter results by. Only valid when multiple sites are enabled.
+    </ParamField>
+    <ParamField path="pending_numbers" type="boolean">
+      When `true`, includes pending numbers in the response.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returned attributes
+
+<ResponseField name="phone_numbers" type="object[]">
+  A list of phone number objects matching the filter criteria.
+
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The unique identifier of the phone number.
+    </ResponseField>
+    <ResponseField name="number" type="string">
+      The phone number in E.164 format.
+    </ResponseField>
+    <ResponseField name="number_type" type="string">
+      The type of number: `toll` or `tollfree`.
+    </ResponseField>
+    <ResponseField name="display_name" type="string">
+      The display name for the phone number.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      The current status of the number.
+    </ResponseField>
+    <ResponseField name="source" type="string">
+      The source from which the phone number was provisioned.
+    </ResponseField>
+    <ResponseField name="location" type="string">
+      The city, state, and country where the phone number is assigned.
+    </ResponseField>
+    <ResponseField name="capability" type="string[]">
+      The capabilities of the number: `incoming`, `outgoing`, or both.
+    </ResponseField>
+    <ResponseField name="assignee" type="object">
+      Details about the entity to which this number is assigned. Only present for assigned numbers.
+
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          The unique identifier of the assignee.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          The name of the assignee.
+        </ResponseField>
+        <ResponseField name="type" type="string">
+          The type of assignee: `user`, `callQueue`, `autoReceptionist`, `commonArea`, `emergencyNumberPool`, `companyLocation`, or `meetingService`.
+        </ResponseField>
+        <ResponseField name="extension_number" type="number">
+          The extension number of the assignee.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="site" type="object">
+      The site to which the phone number is assigned.
+
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          The unique identifier of the site.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          The display name of the site.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="carrier" type="object">
+      The carrier for BYOC numbers. Only present when `filter.type` is `byoc`.
+
+      <Expandable title="properties">
+        <ResponseField name="code" type="number">
+          The carrier code.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          The name of the carrier.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="sip_group" type="object">
+      The SIP group for BYOC numbers. Only present when `filter.type` is `byoc`.
+
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          The unique identifier of the SIP group.
+        </ResponseField>
+        <ResponseField name="display_name" type="string">
+          The name of the SIP group.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="emergency_address" type="object">
+      The emergency address for BYOC numbers. Only present when `filter.type` is `byoc`.
+
+      <Expandable title="properties">
+        <ResponseField name="address_line1" type="string">
+          The street address (house number and street name).
+        </ResponseField>
+        <ResponseField name="address_line2" type="string">
+          Additional address details such as building or floor number.
+        </ResponseField>
+        <ResponseField name="city" type="string">
+          The city of the emergency address.
+        </ResponseField>
+        <ResponseField name="state_code" type="string">
+          The state code of the emergency address.
+        </ResponseField>
+        <ResponseField name="zip" type="string">
+          The postal code of the emergency address.
+        </ResponseField>
+        <ResponseField name="country" type="string">
+          The two-letter ISO 3166-1 alpha-2 country code of the emergency address.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="emergency_address_status" type="number">
+      The emergency address status for BYOC numbers: `1` (carrier update required) or `2` (confirmed).
+    </ResponseField>
+    <ResponseField name="emergency_address_update_time" type="string">
+      The timestamp of the last emergency address update for BYOC numbers. Format: `yyyy-MM-ddThh:dd:ssZ`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>

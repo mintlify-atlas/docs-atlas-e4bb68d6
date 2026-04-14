@@ -1,0 +1,296 @@
+---
+title: "Build a call routing system with Zoom Phone"
+description: "Combine auto receptionists, call queues, IVR menus, and business hours settings to build a complete inbound call routing system with Terraform."
+---
+
+Zoom Phone call routing is composed of several independent resources that work together: an auto receptionist greets callers and presents a menu, an IVR maps key presses to destinations, call queues hold callers until an agent is available, and business hours settings control how routing behaves at different times of day. This guide walks through wiring these components together end-to-end using Terraform.
+
+<Note>
+  Extension numbers must be unique within each site. If you have multiple sites enabled on your account, assign a `site_id` to each resource so Zoom scopes the extension number to the correct site.
+</Note>
+
+## Architecture overview
+
+A typical inbound call flow looks like this:
+
+1. A caller dials a phone number attached to an **auto receptionist**.
+2. The auto receptionist plays a greeting and presents an **IVR menu**.
+3. Based on the key the caller presses, the IVR routes the call to a **call queue**.
+4. **Business hours settings** on the call queue control what happens when the queue is closed or unanswered.
+
+## Step 1: Create the auto receptionist
+
+The auto receptionist is the entry point for inbound calls. It answers the call, plays an audio prompt, and routes the caller based on IVR key presses.
+
+```hcl
+resource "zoom_phone_auto_receptionist" "main" {
+  name             = "Main Reception"
+  extension_number = 100
+  timezone         = "America/Los_Angeles"
+}
+```
+
+Optional attributes include `site_id` (required when multiple sites are enabled), `audio_prompt_language`, `cost_center`, and `department`.
+
+## Step 2: Create call queues
+
+Call queues distribute incoming calls to a pool of agents. Create one queue per department or function.
+
+```hcl
+resource "zoom_phone_call_queue" "sales" {
+  name             = "Sales"
+  extension_number = 200
+  description      = "Inbound sales enquiries"
+}
+
+resource "zoom_phone_call_queue" "support" {
+  name             = "Support"
+  extension_number = 201
+  description      = "Technical support"
+}
+```
+
+## Step 3: Add members to the call queues
+
+Use `zoom_phone_call_queue_members` to assign users to each queue. Members can be identified by Zoom user ID or email address.
+
+```hcl
+resource "zoom_phone_call_queue_members" "sales_members" {
+  call_queue_id = zoom_phone_call_queue.sales.id
+
+  users = [
+    { email = "alice@example.com" },
+    { email = "bob@example.com" },
+  ]
+}
+
+resource "zoom_phone_call_queue_members" "support_members" {
+  call_queue_id = zoom_phone_call_queue.support.id
+
+  users = [
+    { email = "carol@example.com" },
+    { email = "dave@example.com" },
+    { id    = "YYYgNJuS-XXcsv2wJnug" },
+  ]
+}
+```
+
+## Step 4: Configure business hours routing
+
+`zoom_phone_call_handling_business_hours` controls call routing behaviour for a given extension during business hours. The resource references the call queue's `extension_id` (not the `id`).
+
+```hcl
+resource "zoom_phone_call_handling_business_hours" "sales_hours" {
+  extension_id = zoom_phone_call_queue.sales.extension_id
+
+  custom_hours = {
+    type = 2 # Custom hours
+    settings = [
+      { weekday = 1, type = 0 }, # Sunday — disabled
+      { weekday = 2, type = 2, from = "09:00", to = "18:00" }, # Monday
+      { weekday = 3, type = 2, from = "09:00", to = "18:00" }, # Tuesday
+      { weekday = 4, type = 2, from = "09:00", to = "18:00" }, # Wednesday
+      { weekday = 5, type = 2, from = "09:00", to = "18:00" }, # Thursday
+      { weekday = 6, type = 2, from = "09:00", to = "18:00" }, # Friday
+      { weekday = 7, type = 0 }, # Saturday — disabled
+    ]
+  }
+
+  call_handling = {
+    # When no agent answers, forward to voicemail
+    call_not_answer_action = 1
+    max_call_in_queue      = 20
+    max_wait_time          = 300
+    ring_mode              = "simultaneous"
+    call_distribution = {
+      ring_mode     = "simultaneous"
+      ring_duration = 30
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      call_handling.receive_call,
+    ]
+  }
+}
+```
+
+<Warning>
+  The Zoom API does not return some `call_handling` fields (such as `receive_call`) after creation. Add those fields to a `lifecycle { ignore_changes = [...] }` block to prevent Terraform from showing a perpetual diff on subsequent plans.
+</Warning>
+
+## Step 5: Configure the IVR
+
+`zoom_phone_auto_receptionist_ivr` maps key presses on the auto receptionist's menu to routing destinations. The `key_actions` map accepts keys `0`–`9`, `*`, and `#`.
+
+```hcl
+resource "zoom_phone_auto_receptionist_ivr" "main_ivr" {
+  auto_receptionist_id = zoom_phone_auto_receptionist.main.id
+  hours_type           = "business_hours"
+
+  caller_enters_no_action = {
+    audio_prompt_repeat = 2
+    action              = 6 # Forward to the auto receptionist (replay menu)
+    forward_to = {
+      extension_id = zoom_phone_auto_receptionist.main.extension_id
+    }
+  }
+
+  key_actions = {
+    "1" = {
+      action = 7 # Forward to call queue
+      target = {
+        extension_id = zoom_phone_call_queue.sales.extension_id
+      }
+    }
+    "2" = {
+      action = 7 # Forward to call queue
+      target = {
+        extension_id = zoom_phone_call_queue.support.extension_id
+      }
+    }
+    "0" = {
+      action = 100 # Leave voicemail on current extension
+      voicemail_greeting = {
+        id = "" # Use default audio
+      }
+    }
+    "*" = {
+      action = "-1" # Disabled
+    }
+    "#" = {
+      action = "21" # Repeat menu greeting
+    }
+  }
+
+  depends_on = [
+    zoom_phone_call_queue.sales,
+    zoom_phone_call_queue.support,
+  ]
+}
+```
+
+### IVR action reference
+
+| Action code | Description |
+|-------------|-------------|
+| `-1` | Disabled |
+| `2` | Forward to user |
+| `6` | Forward to auto receptionist |
+| `7` | Forward to call queue |
+| `8` | Forward to shared line group |
+| `10` | Forward to external phone number |
+| `21` | Repeat menu greeting |
+| `22` | Return to root menu |
+| `100` | Leave voicemail on current extension |
+
+## Complete example
+
+The following shows all the resources together in a single configuration:
+
+```hcl
+# Entry point
+resource "zoom_phone_auto_receptionist" "main" {
+  name             = "Main Reception"
+  extension_number = 100
+  timezone         = "America/Los_Angeles"
+}
+
+# Queues
+resource "zoom_phone_call_queue" "sales" {
+  name             = "Sales"
+  extension_number = 200
+}
+
+resource "zoom_phone_call_queue" "support" {
+  name             = "Support"
+  extension_number = 201
+}
+
+# Queue members
+resource "zoom_phone_call_queue_members" "sales_members" {
+  call_queue_id = zoom_phone_call_queue.sales.id
+  users = [
+    { email = "alice@example.com" },
+    { email = "bob@example.com" },
+  ]
+}
+
+resource "zoom_phone_call_queue_members" "support_members" {
+  call_queue_id = zoom_phone_call_queue.support.id
+  users = [
+    { email = "carol@example.com" },
+    { email = "dave@example.com" },
+  ]
+}
+
+# Business hours for sales queue
+resource "zoom_phone_call_handling_business_hours" "sales_hours" {
+  extension_id = zoom_phone_call_queue.sales.extension_id
+
+  custom_hours = {
+    type = 2
+    settings = [
+      { weekday = 1, type = 0 },
+      { weekday = 2, type = 2, from = "09:00", to = "18:00" },
+      { weekday = 3, type = 2, from = "09:00", to = "18:00" },
+      { weekday = 4, type = 2, from = "09:00", to = "18:00" },
+      { weekday = 5, type = 2, from = "09:00", to = "18:00" },
+      { weekday = 6, type = 2, from = "09:00", to = "18:00" },
+      { weekday = 7, type = 0 },
+    ]
+  }
+
+  call_handling = {
+    call_not_answer_action = 1
+    max_call_in_queue      = 20
+    max_wait_time          = 300
+    ring_mode              = "simultaneous"
+    call_distribution = {
+      ring_mode     = "simultaneous"
+      ring_duration = 30
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [call_handling.receive_call]
+  }
+}
+
+# IVR routing
+resource "zoom_phone_auto_receptionist_ivr" "main_ivr" {
+  auto_receptionist_id = zoom_phone_auto_receptionist.main.id
+  hours_type           = "business_hours"
+
+  caller_enters_no_action = {
+    audio_prompt_repeat = 2
+    action              = 6
+    forward_to = {
+      extension_id = zoom_phone_auto_receptionist.main.extension_id
+    }
+  }
+
+  key_actions = {
+    "1" = {
+      action = 7
+      target = { extension_id = zoom_phone_call_queue.sales.extension_id }
+    }
+    "2" = {
+      action = 7
+      target = { extension_id = zoom_phone_call_queue.support.extension_id }
+    }
+    "0" = {
+      action             = 100
+      voicemail_greeting = { id = "" }
+    }
+    "*" = { action = "-1" }
+    "#" = { action = "21" }
+  }
+
+  depends_on = [
+    zoom_phone_call_queue.sales,
+    zoom_phone_call_queue.support,
+  ]
+}
+```

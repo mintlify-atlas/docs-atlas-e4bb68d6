@@ -1,0 +1,61 @@
+---
+title: "zoom_phone_blocked_list data source"
+description: "Read details of a single Zoom Phone blocked number or prefix entry by its unique ID, returning the number, match type, block type, status, and comment."
+---
+
+Use the `zoom_phone_blocked_list` data source to retrieve details about a specific blocked number entry in your Zoom Phone account. Account owners and admins can block phone numbers in both directions: inbound (preventing callers from reaching your users) and outbound (preventing your users from dialing certain numbers). Use this data source to inspect an existing entry — for example, to verify its block type, match type, or current status.
+
+## API permissions
+
+The following OAuth scope is required to use this data source:
+
+- `phone:read:blocked_list:admin`
+
+## Example usage
+
+```hcl
+data "zoom_phone_blocked_list" "example" {
+  id = "lSq8jyDORe6tmbaUkOVhXx"
+}
+
+output "example" {
+  value = data.zoom_phone_blocked_list.example
+}
+```
+
+## Schema
+
+### Required arguments
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the blocked list entry.
+</ParamField>
+
+### Returned attributes
+
+<ResponseField name="phone_number" type="string">
+  The blocked phone number or prefix in E.164 format. What this value represents depends on the `match_type`.
+</ResponseField>
+
+<ResponseField name="match_type" type="string">
+  How the block is applied:
+  - `phoneNumber` — only the exact number in `phone_number` is blocked.
+  - `prefix` — all numbers beginning with the value in `phone_number` are blocked.
+</ResponseField>
+
+<ResponseField name="block_type" type="string">
+  The direction in which calls are blocked:
+  - `inbound` — the specified number or prefix cannot call in to your phone users.
+  - `outbound` — your phone users cannot dial the specified number or prefix.
+  - `threat` — the number is flagged as a threat.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Whether the block is currently enforced:
+  - `active` — the blocked list entry is active.
+  - `inactive` — the blocked list entry is inactive.
+</ResponseField>
+
+<ResponseField name="comment" type="string">
+  An optional comment to help identify the blocked number or prefix. Maximum 255 characters.
+</ResponseField>

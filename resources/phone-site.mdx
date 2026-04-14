@@ -1,0 +1,158 @@
+---
+title: "zoom_phone_site — Manage Zoom Phone sites"
+description: "Create and manage Zoom Phone sites for multi-location deployments, including emergency addresses, auto receptionists, and short extension ranges."
+---
+
+Phone sites let you organize Zoom Phone users, call queues, and auto receptionists by physical location. Each site carries its own emergency address, a dedicated main auto receptionist, and an optional short extension numbering scheme. Defining sites in Terraform gives you version-controlled, repeatable configuration that you can promote across environments or replicate for new office locations.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:site:admin`
+- `phone:write:site:admin`
+- `phone:update:site:admin`
+- `phone:delete:site:admin`
+- `phone:read:list_sites:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_site" "example" {
+  name = "example-site"
+
+  main_auto_receptionist = {
+    name = "example-auto-receptionist"
+  }
+
+  default_emergency_address = {
+    address_line1 = "123 Main St"
+    address_line2 = "Suite 100"
+    city          = "San Jose"
+    country       = "US"
+    state_code    = "CA"
+    zip           = "95131"
+  }
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="name" type="string" required>
+  The display name of the site. Maximum 255 characters.
+</ParamField>
+
+<ParamField path="default_emergency_address" type="object" required>
+  The default emergency address for the site. If the address provided is not an exact match, Zoom substitutes the nearest system-corrected address.
+
+  <Expandable title="properties">
+    <ParamField path="address_line1" type="string" required>
+      Street number and name (e.g., `"123 Main St"`).
+    </ParamField>
+    <ParamField path="city" type="string" required>
+      City name.
+    </ParamField>
+    <ParamField path="country" type="string" required>
+      Two-letter ISO 3166-1 alpha-2 country code (e.g., `"US"`).
+    </ParamField>
+    <ParamField path="state_code" type="string" required>
+      State or province code (e.g., `"CA"`).
+    </ParamField>
+    <ParamField path="zip" type="string" required>
+      Postal or ZIP code.
+    </ParamField>
+    <ParamField path="address_line2" type="string">
+      Building, suite, floor, or unit number (e.g., `"Suite 100"`).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="main_auto_receptionist" type="object" required>
+  The main auto receptionist for the site. Every site must have exactly one.
+
+  <Expandable title="properties">
+    <ParamField path="name" type="string" required>
+      Display name of the auto receptionist.
+    </ParamField>
+    <ResponseField name="id" type="string">
+      The auto receptionist ID assigned by Zoom. Populated after the resource is created.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+### Optional
+
+<ParamField path="caller_id_name" type="string">
+  The caller ID name shown to called parties when an outbound call uses a number as the caller ID. Maximum 15 characters. Set to an empty string to reset to the default.
+</ParamField>
+
+<ParamField path="short_extension" type="object">
+  Short extension configuration for the site. Short extensions let users dial colleagues with a compact internal number.
+
+  <Expandable title="properties">
+    <ParamField path="length" type="number">
+      Length of short extension numbers for the site. Accepts values between `1` and `6`. Defaults to `3`.
+    </ParamField>
+    <ParamField path="ranges" type="array of objects">
+      The list of short extension ranges. After adding a range, newly assigned extension numbers start from `range_from`.
+
+      <Expandable title="properties">
+        <ParamField path="range_from" type="string">
+          The starting extension number in the range. Must be a non-negative value less than `range_to`.
+        </ParamField>
+        <ParamField path="range_to" type="string">
+          The ending extension number in the range. Must be a non-negative value greater than `range_from`.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="sip_zone_id" type="string">
+  The SIP zone ID. Selecting a zone nearest to your site can reduce latency and improve call quality. Only available when the account has the Display Custom SIP Zone Options feature enabled.
+</ParamField>
+
+<ParamField path="site_code" type="number">
+  The numeric site code.
+</ParamField>
+
+<ParamField path="source_auto_receptionist_id" type="string">
+  The ID of an existing auto receptionist to copy settings from when creating the main auto receptionist for this site.
+</ParamField>
+
+<ParamField path="india_city" type="string">
+  The site's city. Applies to India-based accounts only.
+</ParamField>
+
+<ParamField path="india_entity_name" type="string">
+  The entity name for Indian SIP zones. Required when an Indian SIP zone is selected. Applies to India-based accounts only.
+</ParamField>
+
+<ParamField path="india_sdca_npa" type="string">
+  The Short Distance Calling Area (SDCA) Numbering Plan Area (NPA) for the site. Linked to the `india_state_code` field. Applies to India-based accounts only.
+</ParamField>
+
+<ParamField path="india_state_code" type="string">
+  The state code for the India site. Applies to India-based accounts only.
+</ParamField>
+
+### Read-only
+
+<ResponseField name="id" type="string">
+  The unique identifier of the site, assigned by Zoom.
+</ResponseField>
+
+<ResponseField name="level" type="string">
+  The level of the site within the account hierarchy.
+</ResponseField>
+
+## Import
+
+Import an existing phone site using its site ID:
+
+```bash
+# ${site_id}
+terraform import zoom_phone_site.example CAUYYsOXRH-xp4hd3cd5A
+```

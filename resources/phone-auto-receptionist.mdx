@@ -1,0 +1,78 @@
+---
+title: "zoom_phone_auto_receptionist — Auto receptionist resource"
+description: "Create and manage Zoom Phone auto receptionists that answer calls and route them to extensions, queues, or IVR menus with zoom_phone_auto_receptionist."
+---
+
+Auto receptionists answer inbound calls with a personalized recording and then route the caller to a phone user, call queue, common area, voicemail, or an IVR system. Each auto receptionist gets its own extension number and can be scoped to a specific site. Defining auto receptionists in Terraform lets you version-control your call-routing topology and replicate it consistently across environments. To configure the IVR key mappings for an auto receptionist, use the [`zoom_phone_auto_receptionist_ivr`](/resources/phone-auto-receptionist-ivr) resource.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:auto_receptionist:admin`
+- `phone:write:auto_receptionist:admin`
+- `phone:update:auto_receptionist:admin`
+- `phone:delete:auto_receptionist:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_auto_receptionist" "example" {
+  name = "terraform-example"
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="name" type="string" required>
+  The display name of the auto receptionist.
+</ParamField>
+
+### Optional
+
+<ParamField path="audio_prompt_language" type="string">
+  The language used for all default audio prompts played by this auto receptionist. Allowed values:
+
+  `en-US`, `en-GB`, `es-US`, `fr-CA`, `da-DK`, `de-DE`, `es-ES`, `fr-FR`, `it-IT`, `nl-NL`, `pt-PT`, `ja`, `ko-KR`, `pt-BR`, `zh-CN`
+</ParamField>
+
+<ParamField path="cost_center" type="string">
+  The cost center name to associate with this auto receptionist. Used for internal accounting and reporting.
+</ParamField>
+
+<ParamField path="department" type="string">
+  The department name to associate with this auto receptionist.
+</ParamField>
+
+<ParamField path="extension_number" type="number">
+  The extension number for the auto receptionist. Must be unique within the account or site.
+</ParamField>
+
+<ParamField path="site_id" type="string">
+  The unique identifier of the site to assign this auto receptionist to. Required when [multiple sites](https://support.zoom.us/hc/en-us/articles/360020809672-Managing-Multiple-Sites) are enabled on the account. Retrieve site IDs from the [List Phone Sites](https://marketplace.zoom.us/docs/api-reference/phone/methods#operation/listPhoneSites) API or from the `zoom_phone_site` resource.
+</ParamField>
+
+<ParamField path="timezone" type="string">
+  The [timezone](https://marketplace.zoom.us/docs/api-reference/other-references/abbreviation-lists#timezones) of the auto receptionist. Controls how business hours and holiday schedules are evaluated.
+</ParamField>
+
+### Read-only
+
+<ResponseField name="id" type="string">
+  The unique identifier of the auto receptionist, assigned by Zoom. Use this value as `auto_receptionist_id` in the `zoom_phone_auto_receptionist_ivr` resource.
+</ResponseField>
+
+<ResponseField name="extension_id" type="string">
+  The extension ID assigned by Zoom. Use this value when targeting this auto receptionist as a forwarding destination in IVR key actions.
+</ResponseField>
+
+## Import
+
+Import an existing auto receptionist using its auto receptionist ID:
+
+```bash
+# ${auto_reception_id}
+terraform import zoom_phone_auto_receptionist.example t6wyhAZRQXXX_Rv3jj3XXX
+```

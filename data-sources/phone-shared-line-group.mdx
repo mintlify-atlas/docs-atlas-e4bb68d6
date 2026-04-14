@@ -1,0 +1,58 @@
+---
+title: "zoom_phone_shared_line_group data source"
+description: "Read configuration of a Zoom Phone shared line group by ID, returning its display name, extension number, primary number, site, and status."
+---
+
+Use the `zoom_phone_shared_line_group` data source to retrieve details about a specific shared line group in your Zoom Phone account. A shared line group lets admins share a phone number and extension with a set of phone users or common areas, giving all members access to the group's direct number and voicemail. Reference this data source when you need the group's primary number, extension, or site ID in other resources.
+
+## API permissions
+
+The following OAuth scope is required to use this data source:
+
+- `phone:read:shared_line_group:admin`
+
+## Example usage
+
+```hcl
+data "zoom_phone_shared_line_group" "example" {
+  id = "4gAYcVCwTUGGDpYWdFpXxx"
+}
+
+output "example" {
+  value = data.zoom_phone_shared_line_group.example
+}
+```
+
+## Schema
+
+### Required arguments
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the shared line group.
+</ParamField>
+
+### Returned attributes
+
+<ResponseField name="display_name" type="string">
+  The display name used to identify the shared line group.
+</ResponseField>
+
+<ResponseField name="extension_number" type="number">
+  The extension number assigned to the shared line group.
+</ResponseField>
+
+<ResponseField name="extension_id" type="string">
+  The extension ID of the shared line group.
+</ResponseField>
+
+<ResponseField name="primary_number" type="string">
+  The primary direct phone number for the shared line group, used for desk phones when multiple numbers are assigned. Calls routed through an auto receptionist use the line associated with this number.
+</ResponseField>
+
+<ResponseField name="site_id" type="string">
+  The unique identifier of the site to which this shared line group is assigned.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The status of the shared line group. Allowed values: `active`, `inactive`.
+</ResponseField>

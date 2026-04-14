@@ -1,0 +1,96 @@
+---
+title: "zoom_phone_external_contact — Manage external contacts"
+description: "Use the zoom_phone_external_contact resource to create and manage external contacts in Zoom Phone, including their phone numbers and routing settings."
+---
+
+External contacts are people or entities outside your Zoom account that you want to make available in the Zoom Phone directory. Adding an external contact lets your users call them by name rather than dialing a number manually, and enables features like automatic call recording for those contacts. You can optionally supply a customer-configured external contact ID (for example, a primary key from your existing phone system) — if you omit it, Zoom generates one automatically. External contacts can be assigned one or more E.164 phone numbers, an extension number, a SIP routing path, and a contact description.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:external_contact:admin`
+- `phone:write:external_contact:admin`
+- `phone:update:external_contact:admin`
+- `phone:delete:external_contact:admin`
+
+## Example usage
+
+External contact with all optional fields:
+
+```hcl
+resource "zoom_phone_external_contact" "example" {
+  id          = "4gAYcVCwTUGGDpYWdFpXxx"
+  name        = "Example"
+  description = "Description"
+  email       = "example@example.com"
+  phone_numbers = [
+    "+0123456789",
+  ]
+  auto_call_recorded = true
+}
+```
+
+Minimal external contact:
+
+```hcl
+resource "zoom_phone_external_contact" "other" {
+  name = "Other"
+  phone_numbers = [
+    "+0123456789",
+  ]
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="name" type="string" required>
+  The external contact's username or extension display name.
+</ParamField>
+
+<ParamField path="phone_numbers" type="set of strings" required>
+  The external contact's phone numbers in [E.164](https://en.wikipedia.org/wiki/E.164) format. At least one number is required if `extension_number` is not provided.
+</ParamField>
+
+### Optional
+
+<ParamField path="id" type="string">
+  A customer-configured external contact ID. It is recommended to use a primary key from your existing phone system to make imports and reconciliation straightforward. If omitted, Zoom generates an `external_contact_id` automatically.
+</ParamField>
+
+<ParamField path="auto_call_recorded" type="boolean">
+  Whether calls to and from this external contact are automatically recorded.
+</ParamField>
+
+<ParamField path="description" type="string">
+  A free-text description of the external contact.
+</ParamField>
+
+<ParamField path="email" type="string">
+  The external contact's email address.
+</ParamField>
+
+<ParamField path="extension_number" type="string">
+  The external contact's extension number.
+</ParamField>
+
+<ParamField path="routing_path" type="string">
+  The SIP group used to define the call routing path for this contact. This field is intended for customers using SIP trunking.
+</ParamField>
+
+### Read-only
+
+<ResponseField name="external_contact_id" type="string">
+  The Zoom-generated external contact ID. This differs from the customer-configured `id` field — it is always assigned by Zoom regardless of whether you provide your own `id`.
+</ResponseField>
+
+## Import
+
+Import an existing external contact using its Zoom-generated external contact ID:
+
+```bash
+# ${external_contact_id}
+terraform import zoom_phone_external_contact.example lSq8jyDORe6tmbaUkOVhXx
+```

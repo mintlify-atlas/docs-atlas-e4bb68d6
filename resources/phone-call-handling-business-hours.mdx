@@ -1,0 +1,400 @@
+---
+title: "zoom_phone_call_handling_business_hours — Business hours"
+description: "Configure call routing schedule and forwarding for a Zoom Phone extension during business hours using zoom_phone_call_handling_business_hours."
+---
+
+Business hours call handling controls how an extension routes incoming calls during the hours your team is available. You define when those hours apply using `custom_hours` — either around the clock or on a per-day schedule — then configure what happens to calls through `call_handling`. Extensions that support it (such as users) can additionally use `call_forwarding` to route calls to personal phone numbers or Zoom apps. Define exactly one resource per `extension_id`; creating multiple resources for the same extension produces conflicting state.
+
+<Warning>
+  Some fields in `call_handling` are not returned by the Zoom API after they are written. Add a `lifecycle` block with `ignore_changes` for those fields to prevent Terraform from treating them as drift. At minimum, include `call_handling.receive_call`. See the example below for the recommended pattern.
+</Warning>
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:call_handling_setting:admin`
+- `phone:write:call_handling_setting:admin`
+- `phone:update:call_handling_setting:admin`
+- `phone:delete:call_handling_setting:admin`
+
+## Example usage
+
+```hcl
+# Define only one resource for each extension id.
+resource "zoom_phone_call_handling_business_hours" "example" {
+  extension_id = "wGJDBcnJQC6tV86BbtlXXX"
+
+  custom_hours = {
+    type                   = 2 # Custom hours
+    allow_members_to_reset = true
+    settings = [
+      {
+        weekday = 1 # Sunday
+        type    = 0 # Disabled
+      },
+      {
+        weekday = 2 # Monday
+        type    = 2 # Customized hours
+        from    = "09:00"
+        to      = "22:00"
+      },
+      {
+        weekday = 3 # Tuesday
+        type    = 2 # Customized hours
+        from    = "09:00"
+        to      = "23:59"
+      },
+      {
+        weekday = 4 # Wednesday
+        type    = 1 # 24 hours
+      },
+      {
+        weekday = 5 # Thursday
+        type    = 1 # 24 hours
+      },
+      {
+        weekday = 6 # Friday
+        type    = 2 # Customized hours
+        from    = "00:00"
+        to      = "22:00"
+      },
+      {
+        weekday = 7 # Saturday
+        type    = 0 # Disabled
+      },
+    ]
+  }
+
+  call_handling = {
+    call_not_answer_action        = 7
+    forward_to_extension_id       = "XXX"
+    busy_on_another_call_action   = 21
+    busy_forward_to_extension_id  = "XXX"
+    allow_callers_check_voicemail = true
+    allow_members_to_reset        = false
+    audio_while_connecting_id     = "XXX"
+    call_distribution = {
+      handle_multiple_calls            = true
+      ring_duration                    = 30
+      ring_mode                        = "simultaneous"
+      skip_offline_device_phone_number = true
+    }
+    busy_require_press_1_before_connecting        = true
+    un_answered_require_press_1_before_connecting = true
+    overflow_play_callee_voicemail_greeting       = true
+    play_callee_voicemail_greeting                = true
+    busy_play_callee_voicemail_greeting           = true
+    phone_number                                  = "+1234567890"
+    phone_number_description                      = "XXX"
+    busy_phone_number                             = "+1234567890"
+    busy_phone_number_description                 = ""
+    connect_to_operator                           = true
+    greeting_prompt_id                            = "0" # disable
+    max_call_in_queue                             = 20
+    max_wait_time                                 = 30
+    music_on_hold_id                              = "0" # disable
+    operator_extension_id                         = "XXX"
+    receive_call                                  = true
+    ring_mode                                     = "simultaneous"
+    voicemail_greeting_id                         = ""
+    wrap_up_time                                  = 60
+  }
+
+  # some extensions support call forwarding, such as users
+  call_forwarding = {
+    require_press_1_before_connecting = true
+    enable_zoom_mobile_apps           = true
+    enable_zoom_desktop_apps          = true
+    enable_zoom_phone_appliance_apps  = true
+    settings = [
+      {
+        description  = "external person"
+        enable       = false
+        phone_number = "+1234567890"
+      },
+    ]
+  }
+
+  lifecycle {
+    ignore_changes = [
+      # The Zoom API does not return this field — ignore it to prevent drift.
+      call_handling.receive_call,
+    ]
+  }
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="extension_id" type="string" required>
+  The unique identifier of the extension to configure. Only one `zoom_phone_call_handling_business_hours` resource may exist per extension.
+</ParamField>
+
+<ParamField path="custom_hours" type="object" required>
+  The schedule that defines when business hours are active.
+
+  <Expandable title="properties">
+    <ParamField path="type" type="number" required>
+      The schedule type:
+      - `1` — 24 hours, 7 days a week
+      - `2` — Custom hours (per-day schedule defined in `settings`)
+    </ParamField>
+
+    <ParamField path="allow_members_to_reset" type="boolean">
+      When `true`, individual call queue members can override the queue's default business hours with their own schedule. Only applies to call queue extensions.
+    </ParamField>
+
+    <ParamField path="settings" type="set of objects">
+      Per-day schedule entries. Required when `type` is `2`.
+
+      <Expandable title="properties">
+        <ParamField path="weekday" type="number" required>
+          The day of the week:
+          - `1` — Sunday
+          - `2` — Monday
+          - `3` — Tuesday
+          - `4` — Wednesday
+          - `5` — Thursday
+          - `6` — Friday
+          - `7` — Saturday
+        </ParamField>
+
+        <ParamField path="type" type="number" required>
+          The availability for this day:
+          - `0` — Disabled
+          - `1` — 24 hours
+          - `2` — Customized hours (requires `from` and `to`)
+        </ParamField>
+
+        <ParamField path="from" type="string">
+          The start time in `HH:mm` format. Required when the day `type` is `2`.
+        </ParamField>
+
+        <ParamField path="to" type="string">
+          The end time in `HH:mm` format. Required when the day `type` is `2`.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="call_handling" type="object" required>
+  Determines how calls are routed when they are not answered or when the extension is busy.
+
+  <Note>
+    Some fields in this block are not returned by the Zoom API after they are written. Use `lifecycle { ignore_changes = [call_handling.receive_call] }` to avoid perpetual drift for those fields.
+  </Note>
+
+  <Expandable title="properties">
+    <ParamField path="call_not_answer_action" type="number">
+      The action to take when a call is not answered:
+      - `1` — Forward to a voicemail
+      - `2` — Forward to the user
+      - `4` — Forward to the common area
+      - `6` — Forward to the auto receptionist
+      - `7` — Forward to a call queue
+      - `8` — Forward to a shared line group
+      - `9` — Forward to an external contact
+      - `10` — Forward to a phone number
+      - `11` — Disconnect
+      - `12` — Play a message, then disconnect
+      - `13` — Forward to a message
+      - `14` — Forward to an interactive voice response (IVR)
+    </ParamField>
+
+    <ParamField path="forward_to_extension_id" type="string">
+      The extension ID to forward unanswered calls to. Required when `call_not_answer_action` is `2`, `4`, `6`, `7`, `8`, or `9`.
+    </ParamField>
+
+    <ParamField path="busy_on_another_call_action" type="number">
+      The action to take when the extension is busy on another call:
+      - `1` — Forward to a voicemail
+      - `2` — Forward to the user
+      - `4` — Forward to the common area
+      - `6` — Forward to the auto receptionist
+      - `7` — Forward to a call queue
+      - `8` — Forward to a shared line group
+      - `9` — Forward to an external contact
+      - `10` — Forward to a phone number
+      - `12` — Play a message, then disconnect
+      - `21` — Call waiting
+      - `22` — Play a busy signal
+    </ParamField>
+
+    <ParamField path="busy_forward_to_extension_id" type="string">
+      The extension ID to forward calls to when busy. Required when `busy_on_another_call_action` is `2`, `4`, `6`, `7`, `8`, or `9`.
+    </ParamField>
+
+    <ParamField path="allow_callers_check_voicemail" type="boolean">
+      Whether callers can check voicemail over the phone. Required when `call_not_answer_action` is `1` (forward to a voicemail).
+    </ParamField>
+
+    <ParamField path="allow_members_to_reset" type="boolean">
+      Whether call queue members can override the queue's call handling settings with their own. Only applies to call queue extensions.
+    </ParamField>
+
+    <ParamField path="audio_while_connecting_id" type="string">
+      The ID of the audio prompt played to callers while they wait to be routed to an available queue member. Pass an empty string for the default or `"0"` to disable. Only applies to call queue extensions.
+    </ParamField>
+
+    <ParamField path="call_distribution" type="object">
+      Controls how incoming calls are distributed among available queue members. Only applies to call queue extensions.
+
+      <Expandable title="properties">
+        <ParamField path="ring_mode" type="string">
+          How calls are distributed across queue members. Allowed values: `simultaneous`, `sequential`, `rotating`, `longest_idle`.
+        </ParamField>
+
+        <ParamField path="ring_duration" type="number">
+          How long each member's device rings, in seconds, before moving to the next. Required for all `ring_mode` values except `simultaneous`. Allowed values: `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`.
+        </ParamField>
+
+        <ParamField path="handle_multiple_calls" type="boolean">
+          When `true`, the maximum number of simultaneous calls handled is capped at half the number of available queue members. Required for all `ring_mode` values except `simultaneous`. Note that the first incoming call may not be answered first.
+        </ParamField>
+
+        <ParamField path="skip_offline_device_phone_number" type="boolean">
+          When `true`, devices where the Zoom app is not running and mobile phones with a locked screen are skipped. Phone numbers added to a user's call handling settings are also skipped. Required for all `ring_mode` values except `simultaneous`.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+
+    <ParamField path="ring_mode" type="string">
+      The ring mode for the extension. Allowed values: `simultaneous`, `sequential`. For user business hours, set this together with `max_wait_time`.
+    </ParamField>
+
+    <ParamField path="max_wait_time" type="number">
+      The maximum number of seconds a caller waits before being rerouted. For simultaneous or sequential ring mode: `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`. For call queue overflow: additionally `120`, `180`, `240`, `300`, `600`, `900`, `1200`, `1500`, `1800`.
+    </ParamField>
+
+    <ParamField path="max_call_in_queue" type="number">
+      The maximum number of callers that can wait in a call queue before overflow routing applies. Maximum value is `60`. Only applies to call queue extensions.
+    </ParamField>
+
+    <ParamField path="greeting_prompt_id" type="string">
+      The ID of the greeting audio prompt. Pass an empty string for the default or `"0"` to disable. Only applies to call queue and auto receptionist extensions.
+    </ParamField>
+
+    <ParamField path="music_on_hold_id" type="string">
+      The ID of the music-on-hold audio prompt played to callers placed on hold by a queue member. Pass an empty string for the default or `"0"` to disable. Only applies to call queue extensions.
+    </ParamField>
+
+    <ParamField path="voicemail_greeting_id" type="string">
+      The ID of the voicemail greeting prompt. Required when `call_not_answer_action` or `busy_on_another_call_action` is `1`. Applies to call queue, auto receptionist, and user extensions.
+    </ParamField>
+
+    <ParamField path="connect_to_operator" type="boolean">
+      Whether callers can press a key to reach an operator. Required when `call_not_answer_action` or `busy_on_another_call_action` is `1` (forward to a voicemail).
+    </ParamField>
+
+    <ParamField path="operator_extension_id" type="string">
+      The extension ID of the operator to transfer callers to. Required when `call_not_answer_action` is `1` and `connect_to_operator` is `true`.
+    </ParamField>
+
+    <ParamField path="phone_number" type="string">
+      The external phone number in [E.164](https://en.wikipedia.org/wiki/E.164) format to forward unanswered calls to. Required when `call_not_answer_action` is `10`.
+    </ParamField>
+
+    <ParamField path="phone_number_description" type="string">
+      An optional description for the external forwarding number. Used when `call_not_answer_action` is `10`.
+    </ParamField>
+
+    <ParamField path="busy_phone_number" type="string">
+      The external phone number in [E.164](https://en.wikipedia.org/wiki/E.164) format to forward busy calls to. Required when `busy_on_another_call_action` is `10`.
+    </ParamField>
+
+    <ParamField path="busy_phone_number_description" type="string">
+      An optional description for the busy forwarding number. Used when `busy_on_another_call_action` is `10`.
+    </ParamField>
+
+    <ParamField path="overflow_play_callee_voicemail_greeting" type="boolean">
+      Whether to play the callee's voicemail greeting when the caller reaches the end of the unanswered forwarding sequence. Applies when `call_not_answer_action` is `2`, `4`, `6`, `7`, `8`, `9`, or `10`.
+    </ParamField>
+
+    <ParamField path="play_callee_voicemail_greeting" type="boolean">
+      Whether to play the callee's voicemail greeting when `busy_on_another_call_action` or `call_not_answer_action` is `1` (forward to a voicemail).
+    </ParamField>
+
+    <ParamField path="busy_play_callee_voicemail_greeting" type="boolean">
+      Whether to play the callee's voicemail greeting when the caller reaches the end of the busy forwarding sequence. Applies when `busy_on_another_call_action` is `2`, `4`, `6`, `7`, `8`, `9`, or `10`.
+    </ParamField>
+
+    <ParamField path="unanswered_require_press1_before_connecting" type="boolean">
+      When a call is unanswered and forwarded to an external contact or number, whether the recipient must press `1` before the call connects. Prevents missed calls from reaching external voicemail.
+    </ParamField>
+
+    <ParamField path="busy_require_press1_before_connecting" type="boolean">
+      When the extension is busy and the call is forwarded to an external contact or number, whether the recipient must press `1` before the call connects.
+    </ParamField>
+
+    <ParamField path="receive_call" type="boolean">
+      Whether call queue members receive incoming call notifications while already on a call. Only applies to call queue extensions.
+
+      <Warning>
+        The Zoom API does not return this field after it is set. Add `call_handling.receive_call` to your `lifecycle { ignore_changes }` block to prevent Terraform from detecting perpetual drift.
+      </Warning>
+    </ParamField>
+
+    <ParamField path="wrap_up_time" type="number">
+      The number of seconds a queue member has after a call ends before the next queued call is routed to them. Only applies to call queue extensions. Allowed values: `0`, `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`, `120`, `180`, `240`, `300`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Optional
+
+<ParamField path="call_forwarding" type="object">
+  Configures forwarding of calls to personal phone numbers or Zoom apps. Supported on user extensions.
+
+  <Expandable title="properties">
+    <ParamField path="require_press_1_before_connecting" type="boolean">
+      Whether the recipient must press `1` before a forwarded call connects to a personal phone number. Prevents missed calls from reaching personal voicemail. Always enabled and required for call queue extensions.
+    </ParamField>
+
+    <ParamField path="enable_zoom_mobile_apps" type="boolean">
+      Whether to forward calls to Zoom Mobile Apps.
+    </ParamField>
+
+    <ParamField path="enable_zoom_desktop_apps" type="boolean">
+      Whether to forward calls to Zoom Desktop Apps.
+    </ParamField>
+
+    <ParamField path="enable_zoom_phone_appliance_apps" type="boolean">
+      Whether to forward calls to Zoom Phone Appliance Apps.
+    </ParamField>
+
+    <ParamField path="settings" type="set of objects">
+      External phone numbers to forward calls to.
+
+      <Expandable title="properties">
+        <ParamField path="phone_number" type="string">
+          The external phone number in [E.164](https://en.wikipedia.org/wiki/E.164) format.
+        </ParamField>
+
+        <ParamField path="description" type="string">
+          A description for the external phone number.
+        </ParamField>
+
+        <ParamField path="enable" type="boolean">
+          Whether this forwarding number is active and will receive calls.
+        </ParamField>
+
+        <ResponseField name="id" type="string">
+          The unique identifier of this call forwarding entry. Assigned by Zoom after apply.
+        </ResponseField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Import
+
+Import an existing business hours configuration using the extension ID:
+
+```bash
+# ${extension_id}
+terraform import zoom_phone_call_handling_business_hours.example t6wyhAZRQXXX_Rv3jj3XXX
+```

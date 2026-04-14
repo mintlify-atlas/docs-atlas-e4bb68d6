@@ -1,0 +1,62 @@
+---
+title: "zoom_phone_call_queue data source"
+description: "Read configuration details of a Zoom Phone call queue by ID, returning its name, extension, site, status, cost center, and department."
+---
+
+Use the `zoom_phone_call_queue` data source to retrieve details about a specific call queue in your Zoom account. Call queues route incoming calls to a group of phone users — for example, to a sales, engineering, or support team. Reference this data source when you need the queue's extension number, site assignment, or status in other resources or outputs.
+
+## API permissions
+
+The following OAuth scope is required to use this data source:
+
+- `phone:read:call_queue:admin`
+
+## Example usage
+
+```hcl
+data "zoom_phone_call_queue" "example" {
+  id = "wGJDBcnJQC6tV86Bbtlq1Q"
+}
+
+output "example" {
+  value = data.zoom_phone_call_queue.example
+}
+```
+
+## Schema
+
+### Required arguments
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the call queue.
+</ParamField>
+
+### Returned attributes
+
+<ResponseField name="name" type="string">
+  The display name of the call queue.
+</ResponseField>
+
+<ResponseField name="extension_number" type="number">
+  The extension number assigned to the call queue.
+</ResponseField>
+
+<ResponseField name="extension_id" type="string">
+  The extension ID of the call queue.
+</ResponseField>
+
+<ResponseField name="site_id" type="string">
+  The unique identifier of the site to which the call queue is assigned.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The status of the call queue. Allowed values: `active`, `inactive`.
+</ResponseField>
+
+<ResponseField name="cost_center" type="string">
+  The cost center name associated with the call queue.
+</ResponseField>
+
+<ResponseField name="department" type="string">
+  The department name associated with the call queue.
+</ResponseField>

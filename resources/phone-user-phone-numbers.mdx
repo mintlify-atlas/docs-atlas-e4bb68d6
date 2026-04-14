@@ -1,0 +1,59 @@
+---
+title: "zoom_phone_user_phone_numbers — Assign numbers to users"
+description: "Use the zoom_phone_user_phone_numbers resource to assign one or more phone numbers to a Zoom Phone user, referencing numbers by ID or by the number string."
+---
+
+Before a Zoom Phone user can send or receive calls from the public switched telephone network, they need at least one phone number assigned to their account. The `zoom_phone_user_phone_numbers` resource manages the set of phone numbers assigned to a user. You can identify each number by its Zoom-assigned ID or by the number itself in E.164 format. The resource manages the full set — numbers not listed will be unassigned from the user.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:write:user_number:admin`
+- `phone:delete:user_number:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_user_phone_numbers" "example" {
+  user_id = "AAggbuS-Q6aXXcsv2wnug"
+  phone_numbers = [
+    {
+      id = "Rhke8HaaaquXXXouayyyA",
+    },
+    {
+      number = "+1234567890",
+    },
+  ]
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="user_id" type="string" required>
+  The unique identifier of the Zoom user to assign phone numbers to.
+</ParamField>
+
+<ParamField path="phone_numbers" type="set of objects" required>
+  The phone numbers to assign to the user. Provide either `id` or `number` for each entry — not both.
+
+  <Expandable title="properties">
+    <ParamField path="id" type="string">
+      The Zoom-assigned unique identifier of the phone number. Provide either `id` or `number`.
+    </ParamField>
+    <ParamField path="number" type="string">
+      The phone number in E.164 format (e.g., `"+12058945456"`). Provide either `id` or `number`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Import
+
+Import existing phone number assignments using the Zoom user ID:
+
+```bash
+# ${user_id}
+terraform import zoom_phone_user_phone_numbers.example LLgNJuS-Q6aYBXXX2wJnug
+```

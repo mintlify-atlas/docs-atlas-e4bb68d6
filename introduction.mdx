@@ -1,0 +1,44 @@
+---
+title: "Terraform Provider for Zoom: Zoom Phone as Code"
+description: "Manage Zoom Phone resources—sites, call queues, auto receptionists, users, and more—declaratively with Terraform using the folio-sec/zoom provider."
+---
+
+The Terraform Provider for Zoom lets you manage Zoom Phone infrastructure as code. Declare your Zoom Phone configuration in HCL, and Terraform handles provisioning, updating, and tearing down resources through Zoom's API. The provider is built and maintained by [Folio Security](https://github.com/folio-sec) and is available on the Terraform Registry under the source address `folio-sec/zoom`. It is licensed under [Apache-2.0](https://github.com/folio-sec/terraform-provider-zoom/blob/main/LICENSE).
+
+## What the provider manages
+
+The provider covers the core Zoom Phone object model:
+
+- **Sites** — `zoom_phone_site`: physical or logical locations that group phone users
+- **Call queues** — `zoom_phone_call_queue`, `zoom_phone_call_queue_members`, `zoom_phone_call_queue_phone_numbers`, `zoom_phone_call_queue_policy_voice_mail`
+- **Auto-receptionists** — `zoom_phone_auto_receptionist`, `zoom_phone_auto_receptionist_ivr`
+- **Call handling** — `zoom_phone_call_handling_business_hours`, `zoom_phone_call_handling_closed_hours`, `zoom_phone_call_handling_holiday_hours`
+- **Shared line groups** — `zoom_phone_shared_line_group`, `zoom_phone_shared_line_group_members`, `zoom_phone_shared_line_group_phone_numbers`
+- **Users** — `zoom_phone_user`, `zoom_phone_user_calling_plans`, `zoom_phone_user_phone_numbers`
+- **Blocked lists** — `zoom_phone_blocked_list`
+- **External contacts** — `zoom_phone_external_contact`
+
+Data sources are available for reading existing Zoom resources into your configuration, including `zoom_phone_site`, `zoom_phone_call_queue`, `zoom_phone_users`, and more.
+
+## Provider details
+
+| Property | Value |
+|---|---|
+| Registry source | `folio-sec/zoom` |
+| License | Apache-2.0 |
+| Terraform Registry | [registry.terraform.io/providers/folio-sec/zoom](https://registry.terraform.io/providers/folio-sec/zoom) |
+| Authentication | Server-to-Server OAuth |
+
+## Get started
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Configure the provider and create your first Zoom Phone resource in minutes.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Set up Server-to-Server OAuth credentials for the provider.
+  </Card>
+  <Card title="Terraform Registry" icon="book-open" href="https://registry.terraform.io/providers/folio-sec/zoom">
+    Browse the full resource and data source reference on the Terraform Registry.
+  </Card>
+</CardGroup>

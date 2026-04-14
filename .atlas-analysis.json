@@ -1,24 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Terraform Provider for Zoom",
+  "projectType": "infrastructure",
+  "projectName": "Terraform Provider for Zoom",
+  "projectDescription": "A Terraform provider that enables infrastructure-as-code management of Zoom Phone resources including sites, call queues, auto receptionists, shared line groups, and users.",
   "theme": "aspen",
-  "colors": {
-    "primary": "#594ed8",
-    "light": "#acacf4",
-    "dark": "#040404"
-  },
-  "favicon": "https://media.brand.dev/e17d026d-572d-467c-9d7d-22530830489c.png",
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/folio-sec/terraform-provider-zoom"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/folio-sec/terraform-provider-zoom"
-    }
-  },
+  "primaryColor": "#594ed8",
+  "lightColor": "#acacf4",
+  "darkColor": "#040404",
   "navigation": {
     "tabs": [
       {
@@ -120,5 +107,44 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Manage Zoom Phone sites with emergency addresses and short extension ranges",
+    "Configure call queues with members, phone numbers, and voicemail policies",
+    "Set up auto receptionists with IVR (Interactive Voice Response) systems",
+    "Control call handling for business hours, closed hours, and holiday hours",
+    "Manage shared line groups for shared phone number and extension access",
+    "Assign calling plans and phone numbers to Zoom Phone users",
+    "Manage blocked call lists and external contacts",
+    "OAuth-based authentication using Server-to-Server app credentials",
+    "Full import support for all resources using Terraform import"
+  ],
+  "publicApiSurface": [
+    "zoom_phone_site (resource)",
+    "zoom_phone_user (resource)",
+    "zoom_phone_user_calling_plans (resource)",
+    "zoom_phone_user_phone_numbers (resource)",
+    "zoom_phone_call_queue (resource)",
+    "zoom_phone_call_queue_members (resource)",
+    "zoom_phone_call_queue_phone_numbers (resource)",
+    "zoom_phone_call_queue_policy_voice_mail (resource)",
+    "zoom_phone_auto_receptionist (resource)",
+    "zoom_phone_auto_receptionist_ivr (resource)",
+    "zoom_phone_call_handling_business_hours (resource)",
+    "zoom_phone_call_handling_closed_hours (resource)",
+    "zoom_phone_call_handling_holiday_hours (resource)",
+    "zoom_phone_shared_line_group (resource)",
+    "zoom_phone_shared_line_group_members (resource)",
+    "zoom_phone_shared_line_group_phone_numbers (resource)",
+    "zoom_phone_blocked_list (resource)",
+    "zoom_phone_external_contact (resource)",
+    "zoom_phone_site (data source)",
+    "zoom_phone_auto_receptionist (data source)",
+    "zoom_phone_call_queue (data source)",
+    "zoom_phone_blocked_list (data source)",
+    "zoom_phone_phone_numbers (data source)",
+    "zoom_phone_shared_line_group (data source)",
+    "zoom_phone_users (data source)",
+    "zoom_user_users (data source)"
+  ]
 }

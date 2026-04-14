@@ -1,0 +1,219 @@
+---
+title: "zoom_phone_call_handling_holiday_hours — Holiday routing"
+description: "Define named holiday periods and configure call routing for a Zoom Phone extension during those times using zoom_phone_call_handling_holiday_hours."
+---
+
+Holiday hours let you define named date ranges — such as company holidays or scheduled maintenance windows — during which a Zoom Phone extension uses a dedicated routing policy instead of its usual business or closed hours settings. Each resource creates one holiday entry with its own start and end time and its own `call_handling` configuration. Unlike business and closed hours, you can create multiple holiday resources for the same extension to cover different holiday periods. Zoom assigns a `holiday_id` to each entry after it is created.
+
+<Warning>
+  Some fields in `call_handling` are not returned by the Zoom API after they are written. Add a `lifecycle` block with `ignore_changes` for those fields to prevent Terraform from treating them as drift. At minimum, include `call_handling.receive_call`. See the example below for the recommended pattern.
+</Warning>
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:call_handling_setting:admin`
+- `phone:write:call_handling_setting:admin`
+- `phone:update:call_handling_setting:admin`
+- `phone:delete:call_handling_setting:admin`
+
+## Example usage
+
+```hcl
+# Multiple resources can be defined for the same extension id.
+resource "zoom_phone_call_handling_holiday_hours" "example" {
+  extension_id = "wGJDBcnJQC6tV86BbtlXXX"
+
+  holiday = {
+    name = "Summer Closure"
+    from = "2024-08-24T09:00:00Z"
+    to   = "2024-08-26T17:00:00+09:00"
+  }
+
+  call_handling = {
+    call_not_answer_action        = 1
+    connect_to_operator           = false
+    allow_callers_check_voicemail = false
+  }
+
+  # some extensions support call forwarding, such as users
+  call_forwarding = {
+    require_press_1_before_connecting = true
+    enable_zoom_mobile_apps           = true
+    enable_zoom_desktop_apps          = true
+    enable_zoom_phone_appliance_apps  = true
+    settings = [
+      {
+        description  = "external person"
+        enable       = true
+        phone_number = "+1234567890"
+      },
+    ]
+  }
+
+  lifecycle {
+    ignore_changes = [
+      # The Zoom API does not return this field — ignore it to prevent drift.
+      call_handling.receive_call,
+    ]
+  }
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="extension_id" type="string" required>
+  The unique identifier of the extension to configure. Multiple `zoom_phone_call_handling_holiday_hours` resources can reference the same extension, each defining a different holiday period.
+</ParamField>
+
+<ParamField path="holiday" type="object" required>
+  The name and date range for this holiday period.
+
+  <Expandable title="properties">
+    <ParamField path="name" type="string" required>
+      The display name for the holiday, such as `"Christmas"` or `"Annual Maintenance"`.
+    </ParamField>
+
+    <ParamField path="from" type="string" required>
+      The start date and time for the holiday in ISO 8601 format (`yyyy-MM-dd'T'HH:mm:ss'Z'` or with a timezone offset).
+    </ParamField>
+
+    <ParamField path="to" type="string" required>
+      The end date and time for the holiday in ISO 8601 format (`yyyy-MM-dd'T'HH:mm:ss'Z'` or with a timezone offset).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="call_handling" type="object" required>
+  Determines how calls are routed during this holiday period.
+
+  <Note>
+    Some fields in this block are not returned by the Zoom API after they are written. Use `lifecycle { ignore_changes = [call_handling.receive_call] }` to avoid perpetual drift for those fields.
+  </Note>
+
+  <Expandable title="properties">
+    <ParamField path="call_not_answer_action" type="number">
+      The action to take when a call is not answered:
+      - `1` — Forward to a voicemail
+      - `2` — Forward to the user
+      - `4` — Forward to the common area
+      - `6` — Forward to the auto receptionist
+      - `7` — Forward to a call queue
+      - `8` — Forward to a shared line group
+      - `9` — Forward to an external contact
+      - `10` — Forward to a phone number
+      - `11` — Disconnect
+      - `12` — Play a message, then disconnect
+      - `13` — Forward to a message
+      - `14` — Forward to an interactive voice response (IVR)
+    </ParamField>
+
+    <ParamField path="forward_to_extension_id" type="string">
+      The extension ID to forward unanswered calls to. Required when `call_not_answer_action` is `2`, `4`, `6`, `7`, `8`, or `9`.
+    </ParamField>
+
+    <ParamField path="allow_callers_check_voicemail" type="boolean">
+      Whether callers can check voicemail over the phone. Required when `call_not_answer_action` is `1` (forward to a voicemail).
+    </ParamField>
+
+    <ParamField path="ring_mode" type="string">
+      The ring mode for the extension. Allowed values: `simultaneous`, `sequential`. For user holiday hours, set this together with `max_wait_time`.
+    </ParamField>
+
+    <ParamField path="max_wait_time" type="number">
+      The maximum number of seconds a caller waits before being rerouted. For simultaneous or sequential ring mode: `10`, `15`, `20`, `25`, `30`, `35`, `40`, `45`, `50`, `55`, `60`. For call queue overflow: additionally `120`, `180`, `240`, `300`, `600`, `900`, `1200`, `1500`, `1800`.
+    </ParamField>
+
+    <ParamField path="connect_to_operator" type="boolean">
+      Whether callers can press a key to reach an operator. Required when `call_not_answer_action` is `1` (forward to a voicemail).
+    </ParamField>
+
+    <ParamField path="operator_extension_id" type="string">
+      The extension ID of the operator to transfer callers to. Required when `call_not_answer_action` is `1` and `connect_to_operator` is `true`.
+    </ParamField>
+
+    <ParamField path="phone_number" type="string">
+      The external phone number in [E.164](https://en.wikipedia.org/wiki/E.164) format to forward unanswered calls to. Required when `call_not_answer_action` is `10`.
+    </ParamField>
+
+    <ParamField path="phone_number_description" type="string">
+      An optional description for the external forwarding number. Used when `call_not_answer_action` is `10`.
+    </ParamField>
+
+    <ParamField path="overflow_play_callee_voicemail_greeting" type="boolean">
+      Whether to play the callee's voicemail greeting when the caller reaches the end of the forwarding sequence. Applies when `call_not_answer_action` is `2`, `4`, `6`, `7`, `8`, `9`, or `10`.
+    </ParamField>
+
+    <ParamField path="play_callee_voicemail_greeting" type="boolean">
+      Whether to play the callee's voicemail greeting when `call_not_answer_action` is `1` (forward to a voicemail).
+    </ParamField>
+
+    <ParamField path="unanswered_require_press1_before_connecting" type="boolean">
+      When a call is unanswered and forwarded to an external contact or number, whether the recipient must press `1` before the call connects. Prevents missed calls from reaching external voicemail.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Optional
+
+<ParamField path="call_forwarding" type="object">
+  Configures forwarding of calls to personal phone numbers or Zoom apps. Supported on user extensions.
+
+  <Expandable title="properties">
+    <ParamField path="require_press_1_before_connecting" type="boolean">
+      Whether the recipient must press `1` before a forwarded call connects to a personal phone number. Prevents missed calls from reaching personal voicemail. Always enabled and required for call queue extensions.
+    </ParamField>
+
+    <ParamField path="enable_zoom_mobile_apps" type="boolean">
+      Whether to forward calls to Zoom Mobile Apps.
+    </ParamField>
+
+    <ParamField path="enable_zoom_desktop_apps" type="boolean">
+      Whether to forward calls to Zoom Desktop Apps.
+    </ParamField>
+
+    <ParamField path="enable_zoom_phone_appliance_apps" type="boolean">
+      Whether to forward calls to Zoom Phone Appliance Apps.
+    </ParamField>
+
+    <ParamField path="settings" type="set of objects">
+      External phone numbers to forward calls to.
+
+      <Expandable title="properties">
+        <ParamField path="phone_number" type="string">
+          The external phone number in [E.164](https://en.wikipedia.org/wiki/E.164) format.
+        </ParamField>
+
+        <ParamField path="description" type="string">
+          A description for the external phone number.
+        </ParamField>
+
+        <ParamField path="enable" type="boolean">
+          Whether this forwarding number is active and will receive calls.
+        </ParamField>
+
+        <ResponseField name="id" type="string">
+          The unique identifier of this call forwarding entry. Assigned by Zoom after apply.
+        </ResponseField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Read-only
+
+<ResponseField name="holiday_id" type="string">
+  The unique identifier of this holiday entry, assigned by Zoom after the resource is created. Use this value when importing the resource.
+</ResponseField>
+
+## Import
+
+Import an existing holiday hours configuration using the extension ID and holiday ID separated by a `/`:
+
+```bash
+# ${extension_id}/${holiday_id}
+terraform import zoom_phone_call_handling_holiday_hours.example t6wyhAZRQXXX_Rv3jj3XXX/gkqphABALXXX_Al0g13XXX
+```

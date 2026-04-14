@@ -1,0 +1,104 @@
+---
+title: "zoom_phone_shared_line_group_members — Group members"
+description: "Use the zoom_phone_shared_line_group_members resource to add Zoom Phone users and common areas as members of an existing shared line group."
+---
+
+The `zoom_phone_shared_line_group_members` resource assigns users and common areas to a shared line group. Members share access to the group's direct phone number and voicemail. You can identify users by their Zoom user ID or email address, and common areas by their common area ID.
+
+<Note>
+  A phone user or common area can only belong to one shared line group at a time. Adding a member that already belongs to another group will result in an error.
+</Note>
+
+This resource manages the full member set as a unit — any members not declared in the configuration are removed from the group when the resource is next applied.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:list_users:admin`
+- `phone:read:list_shared_line_group_members:admin`
+- `phone:write:shared_line_group_member:admin`
+- `phone:delete:shared_line_group_member:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_shared_line_group" "example" {
+  display_name     = "terraform-example"
+  extension_number = "1234"
+}
+
+resource "zoom_phone_shared_line_group_members" "example" {
+  shared_line_group_id = zoom_phone_shared_line_group.example.id
+  common_areas = [
+    {
+      id = "xxxxx-Q6aYBcsv2wJaag"
+    }
+  ]
+  users = [
+    {
+      id = "4gAYcVCwTUGGDpYWdFpXxx"
+    },
+    {
+      email = "mary@example.com"
+    },
+    {
+      email = "john@example.com"
+    },
+  ]
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="shared_line_group_id" type="string" required>
+  The unique identifier of the shared line group to manage members for. Use the `id` output of a `zoom_phone_shared_line_group` resource.
+</ParamField>
+
+### Optional
+
+<ParamField path="common_areas" type="set of objects">
+  The set of common areas to add as members of the shared line group.
+
+  <Expandable title="properties">
+    <ParamField path="id" type="string" required>
+      The unique identifier of the common area.
+    </ParamField>
+    <ResponseField name="extension_id" type="string">
+      The extension ID of the common area, populated by Zoom after the member is added.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The display name of the common area.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="users" type="set of objects">
+  The set of users to add as members of the shared line group. Specify each user by `id`, by `email`, or by both.
+
+  <Expandable title="properties">
+    <ParamField path="email" type="string">
+      The email address of the user. Either `id` or `email` must be specified.
+    </ParamField>
+    <ParamField path="id" type="string">
+      The Zoom user ID of the user. Either `id` or `email` must be specified.
+    </ParamField>
+    <ResponseField name="extension_id" type="string">
+      The extension ID of the user, populated by Zoom after the member is added.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The display name of the user.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+## Import
+
+Import existing shared line group members using the shared line group ID:
+
+```bash
+# ${shared_line_group_id}
+terraform import zoom_phone_shared_line_group_members.example wGJDBcnJQC6tV86BbtlXXX
+```

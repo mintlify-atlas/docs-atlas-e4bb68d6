@@ -1,0 +1,76 @@
+---
+title: "zoom_phone_call_queue_policy_voice_mail — Voicemail policy"
+description: "Configure shared voicemail access permissions for a Zoom Phone call queue using the zoom_phone_call_queue_policy_voice_mail Terraform resource."
+---
+
+The `zoom_phone_call_queue_policy_voice_mail` resource controls which Zoom users can access the shared voicemail inbox of a call queue, and what actions each user is permitted to perform. You can grant individual users the ability to download, delete, or share voicemail messages left for the queue. This resource manages the complete access member list — any members not declared in the configuration are removed.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:call_queue:admin`
+- `phone:write:call_queue_policy:admin`
+- `phone:update:call_queue_policy:admin`
+- `phone:delete:call_queue_policy:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_call_queue" "example" {
+  name             = "terraform-example"
+  extension_number = "1234"
+}
+
+resource "zoom_phone_call_queue_policy_voice_mail" "example" {
+  call_queue_id = zoom_phone_call_queue.example.id
+
+  access_members = [
+    {
+      access_user_id = "LLgNJuS-Q6aYBcsv2wJnug" # Zoom User ID (not phone user ID)
+      allow_download = true
+      allow_delete   = false
+      allow_sharing  = true
+    },
+  ]
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="call_queue_id" type="string" required>
+  The unique identifier of the call queue whose voicemail policy you are configuring. Use the `id` output of a `zoom_phone_call_queue` resource.
+</ParamField>
+
+<ParamField path="access_members" type="set of objects" required>
+  The list of users granted access to the call queue's shared voicemail inbox.
+
+  <Expandable title="properties">
+    <ParamField path="access_user_id" type="string" required>
+      The Zoom user ID or email address of the user to grant access to. This is the Zoom account user ID, not the Zoom Phone user ID.
+    </ParamField>
+    <ParamField path="allow_delete" type="boolean" required>
+      Whether the user can delete voicemail messages. Defaults to `false`.
+    </ParamField>
+    <ParamField path="allow_download" type="boolean" required>
+      Whether the user can download voicemail messages. Defaults to `false`.
+    </ParamField>
+    <ParamField path="allow_sharing" type="boolean" required>
+      Whether the user can share voicemail messages. Defaults to `false`.
+    </ParamField>
+    <ResponseField name="shared_id" type="string">
+      The shared access record ID assigned by Zoom after the member is added.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+## Import
+
+Import an existing call queue voicemail policy using the call queue ID:
+
+```bash
+# ${call_queue_id}
+terraform import zoom_phone_call_queue_policy_voice_mail.example wGJDBcnJQC6tV86BbtlXXX
+```

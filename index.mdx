@@ -1,97 +1,88 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Terraform Provider for Zoom: Manage Zoom Phone as Code"
+description: "Use Terraform to manage Zoom Phone resources including sites, call queues, auto receptionists, shared line groups, and users through infrastructure-as-code."
 ---
 
-## Setting up
+The Terraform Provider for Zoom lets you manage your Zoom Phone infrastructure declaratively using Terraform. Define call queues, auto receptionists, shared line groups, sites, and user configurations in HCL, and apply changes safely with plan/apply workflows.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get the provider configured and deploy your first Zoom Phone resource in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Authentication" icon="lock" href="/authentication">
+    Set up Server-to-Server OAuth credentials to authenticate the provider.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Resources" icon="cube" href="/resources/phone-site">
+    Browse all 18 managed resources for Zoom Phone configuration.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Data Sources" icon="database" href="/data-sources/phone-site">
+    Query existing Zoom Phone resources to use in your Terraform configurations.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What you can manage
 
-Everything you need to create world-class documentation.
+The provider covers the full lifecycle of Zoom Phone resources — create, read, update, delete, and import — all through Terraform state.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={3}>
+  <Card title="Phone Sites" icon="building" href="/resources/phone-site">
+    Organize phone users across office locations with sites.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Call Queues" icon="phone-volume" href="/resources/phone-call-queue">
+    Route incoming calls to groups of users by department or function.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Auto Receptionists" icon="robot" href="/resources/phone-auto-receptionist">
+    Answer calls with personalized recordings and route to extensions.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Call Handling" icon="clock" href="/resources/phone-call-handling-business-hours">
+    Control routing behavior during business, closed, and holiday hours.
   </Card>
-</Columns>
+  <Card title="Shared Line Groups" icon="share-nodes" href="/resources/phone-shared-line-group">
+    Share phone numbers and extensions across multiple users.
+  </Card>
+  <Card title="User Management" icon="user" href="/resources/phone-user">
+    Assign calling plans, phone numbers, and settings to Zoom Phone users.
+  </Card>
+</CardGroup>
 
-## Need inspiration?
+## Get started
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Steps>
+  <Step title="Create a Zoom Server-to-Server OAuth app">
+    In the [Zoom Marketplace](https://marketplace.zoom.us/user/build), create a Server-to-Server OAuth app and collect your Account ID, Client ID, and Client Secret.
+  </Step>
+  <Step title="Configure the provider">
+    Add the provider to your Terraform configuration and supply your credentials either directly or via environment variables.
+
+    ```hcl terraform.tf
+    terraform {
+      required_providers {
+        zoom = {
+          source  = "folio-sec/zoom"
+          version = "~> 0.1"
+        }
+      }
+    }
+
+    provider "zoom" {
+      account_id    = var.zoom_account_id
+      client_id     = var.zoom_client_id
+      client_secret = var.zoom_client_secret
+    }
+    ```
+  </Step>
+  <Step title="Define your resources">
+    Declare your Zoom Phone resources in Terraform and run `terraform apply`.
+
+    ```hcl main.tf
+    resource "zoom_phone_call_queue" "support" {
+      name             = "Support Queue"
+      extension_number = "200"
+    }
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The provider requires a Zoom account with Zoom Phone enabled. All resources use admin-level API permissions — ensure your OAuth app has the required scopes before applying.
+</Note>

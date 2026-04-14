@@ -1,0 +1,182 @@
+---
+title: "Import existing Zoom Phone resources into Terraform"
+description: "Bring pre-existing Zoom Phone resources under Terraform management using terraform import, then reconcile state with your configuration files."
+---
+
+If your Zoom Phone account already has sites, call queues, auto receptionists, or other resources that were created outside of Terraform, you can bring them under Terraform management without recreating them. The `terraform import` command reads the existing resource from the Zoom API and writes its state into your Terraform state file. Once imported, you update your `.tf` files to match the imported state, and subsequent `terraform plan` runs show no changes.
+
+## Before you import
+
+You need two things before running an import:
+
+1. **The resource ID** — a Zoom-assigned identifier for the specific resource. See the sections below for where to find each resource's ID.
+2. **An empty resource block** — a placeholder resource block in your `.tf` files with the correct resource type and local name. Terraform will populate the state, but it will not generate the HCL configuration for you.
+
+## Import workflow
+
+<Steps>
+  <Step title="Write a placeholder resource block">
+    Add a resource block to your `.tf` files with the correct resource type and a local name. You do not need to fill in any attributes yet — just the block itself.
+
+    ```hcl
+    resource "zoom_phone_site" "hq" {
+      # attributes will be filled in after import
+      name = ""
+      main_auto_receptionist = { name = "" }
+      default_emergency_address = {
+        address_line1 = ""
+        city          = ""
+        country       = ""
+        state_code    = ""
+        zip           = ""
+      }
+    }
+    ```
+  </Step>
+  <Step title="Run terraform import">
+    Run `terraform import` with the resource address and the Zoom resource ID. The resource address is `<resource_type>.<local_name>`.
+
+    ```bash
+    terraform import zoom_phone_site.hq CAUYYsOXRH-xp4hd3cd5A
+    ```
+
+    Terraform reads the resource from the Zoom API and writes its attributes into the state file.
+  </Step>
+  <Step title="Inspect the imported state">
+    Run `terraform show` to see the full set of attributes that Terraform now holds in state for the resource.
+
+    ```bash
+    terraform show
+    ```
+
+    The output lists every attribute and its current value. Copy these values into your placeholder resource block in your `.tf` file.
+  </Step>
+  <Step title="Update your .tf configuration">
+    Update the resource block to match the values shown by `terraform show`. Fill in all required attributes and any optional attributes whose current values differ from defaults.
+
+    ```hcl
+    resource "zoom_phone_site" "hq" {
+      name = "Headquarters"
+
+      main_auto_receptionist = {
+        name = "HQ Main Reception"
+      }
+
+      default_emergency_address = {
+        address_line1 = "123 Main St"
+        address_line2 = "Suite 100"
+        city          = "San Jose"
+        country       = "US"
+        state_code    = "CA"
+        zip           = "95131"
+      }
+    }
+    ```
+  </Step>
+  <Step title="Verify with terraform plan">
+    Run `terraform plan`. If your `.tf` configuration matches the imported state exactly, the plan shows no changes.
+
+    ```bash
+    terraform plan
+    ```
+
+    If the plan shows unexpected changes, adjust your configuration until the diff is empty (or only shows intentional changes).
+  </Step>
+</Steps>
+
+## Import syntax by resource type
+
+### zoom_phone_site
+
+Find the site ID in the Zoom admin portal under **Phone System Management → Company Info → Sites**, or from the [List Phone Sites](https://marketplace.zoom.us/docs/api-reference/phone/methods#operation/listPhoneSites) API response (`id` field).
+
+```bash
+terraform import zoom_phone_site.example CAUYYsOXRH-xp4hd3cd5A
+```
+
+### zoom_phone_call_queue
+
+Find the call queue ID in the Zoom admin portal under **Phone System Management → Call Queues**, or from the [List Call Queues](https://marketplace.zoom.us/docs/api-reference/phone/methods#operation/listCallQueues) API response (`id` field).
+
+```bash
+terraform import zoom_phone_call_queue.example wGJDBcnJQC6tV86BbtlXXX
+```
+
+### zoom_phone_auto_receptionist
+
+Find the auto receptionist ID in the Zoom admin portal under **Phone System Management → Auto Receptionists**, or from the [List Auto Receptionists](https://marketplace.zoom.us/docs/api-reference/phone/methods#operation/listAutoReceptionists) API response (`id` field).
+
+```bash
+terraform import zoom_phone_auto_receptionist.example t6wyhAZRQXXX_Rv3jj3XXX
+```
+
+### zoom_phone_shared_line_group
+
+Find the shared line group ID in the Zoom admin portal under **Phone System Management → Shared Line Groups**, or from the [List Shared Line Groups](https://marketplace.zoom.us/docs/api-reference/phone/methods#operation/listSharedLineGroups) API response (`id` field).
+
+```bash
+terraform import zoom_phone_shared_line_group.example wGJDBcnJQC6tV86BbtlXXX
+```
+
+### zoom_phone_user
+
+Find the Zoom user ID in the Zoom admin portal under **User Management → Users** (select a user and check the URL), or from the [List Users](https://marketplace.zoom.us/docs/api-reference/zoom-api/methods#operation/users) API response (`id` field).
+
+```bash
+terraform import zoom_phone_user.example AAggbuS-Q6aXXcsv2wnug
+```
+
+### zoom_phone_call_handling_business_hours
+
+This resource is imported using the **extension ID** of the call queue, auto receptionist, or user — not its primary `id`. The extension ID is available as a read-only attribute (`extension_id`) after the parent resource is created or imported.
+
+```bash
+terraform import zoom_phone_call_handling_business_hours.example t6wyhAZRQXXX_Rv3jj3XXX
+```
+
+## Finding IDs via data sources
+
+If a resource is already managed in Terraform (or was just imported), you can reference its ID directly using the resource's attributes. For resources not yet in state, use data sources to look them up:
+
+```hcl
+data "zoom_phone_site" "existing" {
+  id = "CAUYYsOXRH-xp4hd3cd5A"
+}
+
+data "zoom_phone_auto_receptionist" "existing" {
+  id = "I-fiz4v1TFC4FWfzXA0XXX"
+}
+
+# Reference IDs from data sources in other resources
+resource "zoom_phone_call_queue" "sales" {
+  name             = "Sales"
+  extension_number = 200
+  site_id          = data.zoom_phone_site.existing.id
+}
+```
+
+<Tip>
+  When importing several related resources — for example, a call queue and its business hours settings — import them in dependency order (parents before children). This ensures that attributes such as `extension_id` are available in state before you import dependent resources.
+</Tip>
+
+## Common issues
+
+<AccordionGroup>
+  <Accordion title="Plan shows changes after import">
+    This usually means your `.tf` configuration does not exactly match the imported state. Run `terraform show` again and compare each attribute carefully. Pay attention to optional attributes with non-default values, and computed read-only fields which you should not include in your configuration.
+  </Accordion>
+  <Accordion title="Resource not found during import">
+    Double-check the resource ID — Zoom IDs are case-sensitive. Confirm the ID by querying the Zoom API or checking the admin portal URL. Also verify that the OAuth app has the required API permissions for the resource type.
+  </Accordion>
+  <Accordion title="ignore_changes needed after import">
+    Some Zoom API endpoints do not return all fields after creation or read operations. If Terraform shows a perpetual diff for a field you cannot control (for example, `call_handling.receive_call`), add it to a `lifecycle { ignore_changes = [...] }` block.
+
+    ```hcl
+    lifecycle {
+      ignore_changes = [
+        call_handling.receive_call,
+      ]
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

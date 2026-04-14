@@ -1,0 +1,81 @@
+---
+title: "zoom_phone_shared_line_group — Shared phone lines"
+description: "Use the zoom_phone_shared_line_group resource to create and manage Zoom Phone shared line groups that share a number and extension with multiple users."
+---
+
+A shared line group lets Zoom Phone admins share a phone number and extension with a group of phone users or common areas. Every member of the group gains access to the group's direct phone number and voicemail, making shared line groups useful for small teams that need to answer calls under a single number. Phone numbers and group members are managed through their own dedicated resources — `zoom_phone_shared_line_group_phone_numbers` and `zoom_phone_shared_line_group_members` — so that each concern can be versioned and applied independently.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:shared_line_group:admin`
+- `phone:write:shared_line_group:admin`
+- `phone:update:shared_line_group:admin`
+- `phone:delete:shared_line_group:admin`
+
+## Example usage
+
+Basic shared line group:
+
+```hcl
+resource "zoom_phone_shared_line_group" "example" {
+  display_name     = "terraform-example"
+  extension_number = "1234"
+}
+```
+
+Shared line group set to inactive:
+
+```hcl
+resource "zoom_phone_shared_line_group" "inactive" {
+  display_name     = "terraform-example-inactive"
+  extension_number = "1235"
+  status           = "inactive"
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="display_name" type="string" required>
+  The name used to identify the shared line group within the Zoom Phone admin portal.
+</ParamField>
+
+<ParamField path="extension_number" type="number" required>
+  The extension number for the shared line group. Must be unique within the account or site.
+</ParamField>
+
+### Optional
+
+<ParamField path="site_id" type="string">
+  The unique identifier of the [site](https://support.zoom.us/hc/en-us/articles/360020809672-Managing-multiple-sites) to assign this shared line group to. Only members that belong to this site can be added to the group. Required when [multiple sites](https://support.zoom.us/hc/en-us/articles/360020809672-Managing-multiple-sites) are enabled on the account.
+</ParamField>
+
+<ParamField path="status" type="string">
+  The status of the shared line group. Allowed values: `active`, `inactive`. Defaults to `active` when not specified.
+</ParamField>
+
+### Read-only
+
+<ResponseField name="id" type="string">
+  The unique identifier of the shared line group, assigned by Zoom. Use this value as `shared_line_group_id` in the `zoom_phone_shared_line_group_members` and `zoom_phone_shared_line_group_phone_numbers` resources.
+</ResponseField>
+
+<ResponseField name="extension_id" type="string">
+  The extension ID assigned by Zoom.
+</ResponseField>
+
+<ResponseField name="primary_number" type="string">
+  The primary phone number selected for desk phones when multiple direct numbers are assigned to the group. The primary number shares the same line as the extension number — when a caller is routed to the group through an auto receptionist, the line associated with this number is used.
+</ResponseField>
+
+## Import
+
+Import an existing shared line group using its shared line group ID:
+
+```bash
+# ${shared_line_group_id}
+terraform import zoom_phone_shared_line_group.example wGJDBcnJQC6tV86BbtlXXX
+```

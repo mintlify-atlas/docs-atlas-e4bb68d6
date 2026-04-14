@@ -1,0 +1,213 @@
+---
+title: "zoom_phone_auto_receptionist_ivr — IVR key mapping"
+description: "Configure IVR key mappings and call-routing actions for a Zoom Phone auto receptionist using the zoom_phone_auto_receptionist_ivr Terraform resource."
+---
+
+An Interactive Voice Response (IVR) system lets callers navigate a menu by pressing keys on their phone. This resource configures the key-to-action mappings for a given auto receptionist during a specific hours period — business hours, closed hours, or a named holiday. Each key (`0`–`9`, `*`, `#`) can forward to an extension, leave a voicemail, or perform a menu navigation action. You must create the parent [`zoom_phone_auto_receptionist`](/resources/phone-auto-receptionist) resource first and reference its `id` in `auto_receptionist_id`.
+
+<Note>
+  If both `holiday_id` and `hours_type` are set, `holiday_id` takes precedence and `hours_type` is ignored.
+</Note>
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:auto_receptionist_ivr:admin`
+- `phone:update:auto_receptionist_ivr:admin`
+
+## Example usage
+
+```hcl
+data "zoom_phone_auto_receptionist" "primary" {
+  id = "I-fiz4v1TFC4FWfzXA0XXX"
+}
+
+resource "zoom_phone_auto_receptionist" "example" {
+  name = "terraform-example"
+}
+
+resource "zoom_phone_auto_receptionist_ivr" "example" {
+  auto_receptionist_id = zoom_phone_auto_receptionist.example.id
+  hours_type           = "business_hours"
+
+  caller_enters_no_action = {
+    audio_prompt_repeat = 1
+    action              = 6 # Forward to the auto receptionist
+    forward_to = {
+      extension_id = data.zoom_phone_auto_receptionist.primary.extension_id
+    }
+  }
+
+  key_actions = {
+    "0" = {
+      action = 100 # Leave voicemail to the current extension
+      voicemail_greeting = {
+        id = "" # empty string as using default audio
+      }
+    },
+    "1" = {
+      action = 6 # Forward to the auto receptionist
+      target = {
+        extension_id = zoom_phone_auto_receptionist.example.extension_id
+      }
+    },
+    "*" = {
+      action = "-1" # Disabled
+    },
+    "#" = {
+      action = "21" # Repeat menu greeting
+    }
+  }
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="auto_receptionist_id" type="string" required>
+  The unique identifier of the auto receptionist to configure. Retrieve this from the `zoom_phone_auto_receptionist` resource or from the [List Phone Sites](https://marketplace.zoom.us/docs/api-reference/phone/methods#operation/listPhoneSites) API.
+</ParamField>
+
+<ParamField path="key_actions" type="map of objects" required>
+  IVR routing options keyed by the digit the caller presses. Supported keys are `"0"`–`"9"`, `"*"`, and `"#"`.
+
+  <Expandable title="properties">
+    <ParamField path="action" type="number" required>
+      The action to perform when the caller presses this key.
+
+      For keys `0`–`9`:
+      - `100` — Leave voicemail to the current extension
+      - `200` — Leave voicemail to the user
+      - `300` — Leave voicemail to the auto receptionist
+      - `400` — Leave voicemail to the call queue
+      - `500` — Leave voicemail to the shared line group
+      - `2` — Forward to the user
+      - `3` — Forward to Zoom Room
+      - `4` — Forward to the common area
+      - `5` — Forward to Cisco/Polycom Room
+      - `6` — Forward to the auto receptionist
+      - `7` — Forward to the call queue
+      - `8` — Forward to the shared line group
+      - `9` — Forward to external contacts
+      - `10` — Forward to a phone number
+      - `15` — Forward to the contact center
+      - `16` — Forward to the meeting service
+      - `17` — Forward to the meeting service number
+      - `-1` — Disabled
+
+      For keys `*` or `#`:
+      - `21` — Repeat menu greeting
+      - `22` — Return to the root menu
+      - `23` — Return to the previous menu
+      - `-1` — Disabled
+    </ParamField>
+
+    <ParamField path="target" type="object">
+      The destination to route the caller to. Used when `action` is a forward action.
+
+      <Expandable title="properties">
+        <ParamField path="extension_id" type="string">
+          The extension ID or contact center setting ID to forward the caller to.
+        </ParamField>
+        <ParamField path="phone_number" type="string">
+          The phone number to forward to. Used when `action` is `10` (forward to a phone number).
+        </ParamField>
+        <ResponseField name="id" type="string">
+          The user, common area, Zoom Room, Cisco/Polycom room, auto receptionist, call queue, or shared line group ID. Populated by Zoom after apply.
+        </ResponseField>
+        <ResponseField name="display_name" type="string">
+          The display name of the forwarding target. Populated by Zoom after apply.
+        </ResponseField>
+        <ResponseField name="extension_number" type="string">
+          The extension number of the forwarding target. Populated by Zoom after apply.
+        </ResponseField>
+      </Expandable>
+    </ParamField>
+
+    <ParamField path="voicemail_greeting" type="object">
+      The voicemail greeting to play. Used when `action` is a leave-voicemail action.
+
+      <Expandable title="properties">
+        <ParamField path="id" type="string" required>
+          The voicemail greeting file ID from the audio library. Pass an empty string (`""`) to use the default audio. If the audio file was removed from the library, its ID will carry a `removed_` prefix — you can still reference it to retrieve audio information from the [Get an audio item](https://marketplace.zoom.us/docs/api-reference/phone/methods#tag/Audio-Library/operation/GetAudioItem) API.
+        </ParamField>
+        <ResponseField name="name" type="string">
+          The display name of the voicemail greeting file. Populated by Zoom after apply.
+        </ResponseField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Optional
+
+<ParamField path="audio_prompt" type="object">
+  The audio prompt file to play as the IVR menu greeting.
+
+  <Expandable title="properties">
+    <ParamField path="id" type="string" required>
+      The audio prompt file ID from the audio library. If the audio file was removed from the library, its ID will carry a `removed_` prefix — you can still reference it to retrieve audio information from the [Get an audio item](https://marketplace.zoom.us/docs/api-reference/phone/methods#tag/Audio-Library/operation/GetAudioItem) API.
+    </ParamField>
+    <ResponseField name="name" type="string">
+      The display name of the audio prompt file. Populated by Zoom after apply.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="caller_enters_no_action" type="object">
+  The action to take if the caller does not press any key after the prompt finishes playing.
+
+  <Expandable title="properties">
+    <ParamField path="action" type="number" required>
+      The action to perform when no key is pressed. Allowed values:
+      - `-1` — Disconnect the call
+      - `2` — Forward to the user
+      - `4` — Forward to the common area
+      - `5` — Forward to Cisco/Polycom Room
+      - `6` — Forward to the auto receptionist
+      - `7` — Forward to the call queue
+      - `8` — Forward to the shared line group
+      - `15` — Forward to the contact center
+    </ParamField>
+    <ParamField path="audio_prompt_repeat" type="number" required>
+      The number of times to repeat the audio prompt before performing the no-action fallback. Allowed values: `1`, `2`, `3`.
+    </ParamField>
+    <ParamField path="forward_to" type="object">
+      The destination to forward the caller to when no key is pressed.
+
+      <Expandable title="properties">
+        <ParamField path="extension_id" type="string" required>
+          The extension ID or contact center setting ID to forward the caller to.
+        </ParamField>
+        <ResponseField name="id" type="string">
+          The user, common area, Zoom Room, Cisco/Polycom room, auto receptionist, call queue, or shared line group ID. Populated by Zoom after apply.
+        </ResponseField>
+        <ResponseField name="display_name" type="string">
+          The display name of the forwarding target. Populated by Zoom after apply.
+        </ResponseField>
+        <ResponseField name="extension_number" type="string">
+          The extension number of the forwarding target. Populated by Zoom after apply.
+        </ResponseField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="holiday_id" type="string">
+  The auto receptionist holiday hours ID. When provided, this configuration applies to the specified holiday schedule. Takes precedence over `hours_type` if both are set.
+</ParamField>
+
+<ParamField path="hours_type" type="string">
+  The hours period this IVR configuration applies to. Allowed values: `business_hours`, `closed_hours`. Defaults to `business_hours`.
+</ParamField>
+
+## Import
+
+Import an existing auto receptionist IVR configuration using its auto receptionist ID:
+
+```bash
+# ${auto_reception_id}
+terraform import zoom_phone_auto_receptionist_ivr.example t6wyhAZRQXXX_Rv3jj3XXX
+```

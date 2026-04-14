@@ -1,0 +1,72 @@
+---
+title: "zoom_phone_blocked_list — Block phone numbers"
+description: "Use the zoom_phone_blocked_list resource to block specific phone numbers or number prefixes from making or receiving calls in your Zoom Phone account."
+---
+
+The `zoom_phone_blocked_list` resource lets account owners and admins block phone numbers for all Zoom Phone users in the account. Blocking can be applied to inbound calls (preventing the specified number from calling in), outbound calls (preventing account users from dialing the specified number), or both. Callers who are blocked hear a generic unavailability message. You can block an exact number or an entire prefix, making this resource useful for blocking entire area codes or country codes as well as individual numbers.
+
+## Required API permissions
+
+This resource requires the following OAuth scopes on the server-to-server app credential used by the provider:
+
+- `phone:read:blocked_list:admin`
+- `phone:write:blocked_list:admin`
+- `phone:delete:blocked_list:admin`
+
+## Example usage
+
+```hcl
+resource "zoom_phone_blocked_list" "example" {
+  block_type   = "inbound"
+  match_type   = "phoneNumber"
+  phone_number = "+1234567890"
+  status       = "active"
+}
+```
+
+## Schema
+
+### Required
+
+<ParamField path="block_type" type="string" required>
+  The direction of calls to block. Allowed values:
+
+  - `inbound` — The specified number or prefix is prevented from calling in to phone users in the account.
+  - `outbound` — Phone users in the account are prevented from calling the specified number or prefix.
+</ParamField>
+
+<ParamField path="match_type" type="string" required>
+  Determines whether to block an exact number or all numbers sharing a prefix. Allowed values:
+
+  - `phoneNumber` — Only the specific number in the `phone_number` field is blocked.
+  - `prefix` — All numbers that start with the value in the `phone_number` field are blocked.
+</ParamField>
+
+<ParamField path="phone_number" type="string" required>
+  The phone number or prefix to block, in E.164 format. When `match_type` is `phoneNumber`, this must be a complete number. When `match_type` is `prefix`, this is the leading digits shared by the numbers you want to block.
+</ParamField>
+
+### Optional
+
+<ParamField path="comment" type="string">
+  A free-text comment to help identify the purpose of this blocked list entry. Maximum 255 characters.
+</ParamField>
+
+<ParamField path="status" type="string">
+  Whether the block is currently enforced. Allowed values: `active`, `inactive`. Defaults to `active` when not specified. Setting this to `inactive` retains the entry but stops enforcing the block.
+</ParamField>
+
+### Read-only
+
+<ResponseField name="id" type="string">
+  The unique identifier of the blocked list entry, assigned by Zoom.
+</ResponseField>
+
+## Import
+
+Import an existing blocked list entry using its blocked list ID:
+
+```bash
+# ${blocked_list_id}
+terraform import zoom_phone_blocked_list.example lSq8jyDORe6tmbaUkOVhXx
+```

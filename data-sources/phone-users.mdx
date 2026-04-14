@@ -1,0 +1,126 @@
+---
+title: "zoom_phone_users data source"
+description: "Use the zoom_phone_users data source to list Zoom account users who hold a Zoom Phone license, with optional filters for status, site, and department."
+---
+
+Use the `zoom_phone_users` data source to retrieve a list of users in your Zoom account who have been assigned a Zoom Phone license. You can filter results by status, site, department, cost center, calling plan type, or a keyword search. This data source is useful for looking up a user's phone extension, phone numbers, or calling plan before referencing them in other resources.
+
+## API permissions
+
+The following OAuth scope is required to use this data source:
+
+- `phone:read:list_users:admin`
+
+## Example usage
+
+```hcl
+data "zoom_phone_users" "example" {
+  query = {
+    status = "activate"
+  }
+}
+
+output "users" {
+  value = data.zoom_phone_users.example.users
+}
+```
+
+## Schema
+
+### Optional arguments
+
+<ParamField path="query" type="object">
+  Filter criteria for the list of phone users.
+
+  <Expandable title="properties">
+    <ParamField path="status" type="string">
+      The status of the Zoom Phone user. Allowed values: `activate`, `deactivate`, `pending`.
+    </ParamField>
+    <ParamField path="site_id" type="string">
+      The unique identifier of the site to filter users by.
+    </ParamField>
+    <ParamField path="calling_type" type="number">
+      The calling plan type to filter by. See the [Zoom Phone calling plans reference](https://marketplace.zoom.us/docs/api-reference/other-references/plans#zoom-phone-calling-plans) for valid values.
+    </ParamField>
+    <ParamField path="keyword" type="string">
+      A partial string to match against the user's name, extension number, or phone number.
+    </ParamField>
+    <ParamField path="cost_center" type="string">
+      Filter users by cost center name.
+    </ParamField>
+    <ParamField path="department" type="string">
+      Filter users by department name.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returned attributes
+
+<ResponseField name="users" type="object[]">
+  A set of phone users matching the query criteria.
+
+  <Expandable title="properties">
+    <ResponseField name="user_id" type="string">
+      The Zoom user ID.
+    </ResponseField>
+    <ResponseField name="phone_user_id" type="string">
+      The Zoom Phone user ID.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The display name of the user.
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      The email address of the user.
+    </ResponseField>
+    <ResponseField name="extension_number" type="number">
+      The extension number assigned to the user's Zoom Phone number.
+    </ResponseField>
+    <ResponseField name="extension_id" type="string">
+      The extension ID of the user.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      The status of the user's Zoom Phone license:
+      - `activate` — active Zoom Phone user.
+      - `deactivate` — user with Zoom Phone disabled; cannot make or receive calls.
+    </ResponseField>
+    <ResponseField name="site_id" type="string">
+      The unique identifier of the site to which the user is assigned.
+    </ResponseField>
+    <ResponseField name="department" type="string">
+      The department the user belongs to.
+    </ResponseField>
+    <ResponseField name="cost_center" type="string">
+      The cost center the user belongs to.
+    </ResponseField>
+    <ResponseField name="calling_plans" type="object[]">
+      The calling plans assigned to the user.
+
+      <Expandable title="properties">
+        <ResponseField name="type" type="number">
+          The calling plan type identifier.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          The name of the calling plan.
+        </ResponseField>
+        <ResponseField name="billing_account_id" type="string">
+          The billing account ID. Displayed only for users located in India.
+        </ResponseField>
+        <ResponseField name="billing_account_name" type="string">
+          The billing account name. Displayed only for users located in India.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="phone_numbers" type="object[]">
+      The phone numbers assigned to the user.
+
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          The unique identifier of the phone number.
+        </ResponseField>
+        <ResponseField name="number" type="string">
+          The phone number in E.164 format.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>

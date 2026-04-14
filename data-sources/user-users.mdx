@@ -1,0 +1,145 @@
+---
+title: "zoom_user_users data source"
+description: "Use the zoom_user_users data source to list Zoom account users and their profile details, with optional filters for status, role, and license type."
+---
+
+Use the `zoom_user_users` data source to retrieve basic profile information for users in your Zoom account. You can filter by status, role, or license type, and optionally request additional fields such as custom attributes or host keys. This data source is useful for looking up user IDs, group memberships, or plan types before referencing them in other resources.
+
+<Info>
+  The `host_key` field is sensitive. When outputting the full `users` set, mark the output as `sensitive = true` to prevent the value from being displayed in logs.
+</Info>
+
+## API permissions
+
+The following OAuth scope is required to use this data source:
+
+- `user:read:list_users:admin`
+
+## Example usage
+
+```hcl
+data "zoom_user_users" "example" {
+  query = {
+    status = "active"
+  }
+}
+
+output "users" {
+  value     = data.zoom_user_users.example.users
+  # host_key is sensitive — mark the output accordingly
+  sensitive = true
+}
+```
+
+## Schema
+
+### Optional arguments
+
+<ParamField path="query" type="object">
+  Filter criteria for the list of users.
+
+  <Expandable title="properties">
+    <ParamField path="status" type="string">
+      The user's account status. Defaults to `active`. Allowed values: `active`, `inactive`, `pending`.
+    </ParamField>
+    <ParamField path="role_id" type="string">
+      Filter users by a specific role ID. Use the [List roles API](https://developers.zoom.us/docs/api/rest/reference/account/methods/#operation/roles) to retrieve role IDs.
+    </ParamField>
+    <ParamField path="license" type="string">
+      Filter by a specific license type. Allowed values: `zoom_workforce_management`, `zoom_compliance_management`.
+    </ParamField>
+    <ParamField path="include_fields" type="string">
+      Return additional fields in the response. Allowed values:
+      - `custom_attributes` — include the user's custom attributes.
+      - `host_key` — include the user's host key.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returned attributes
+
+<ResponseField name="users" type="object[]">
+  A set of Zoom user objects matching the query criteria.
+
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The unique ID of the user. Not returned for users with `pending` status.
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      The user's email address.
+    </ResponseField>
+    <ResponseField name="first_name" type="string">
+      The user's first name.
+    </ResponseField>
+    <ResponseField name="last_name" type="string">
+      The user's last name.
+    </ResponseField>
+    <ResponseField name="display_name" type="string">
+      The user's display name.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      The user's account status. Allowed values: `active`, `inactive`, `pending`.
+    </ResponseField>
+    <ResponseField name="type" type="number">
+      The user's assigned plan type:
+      - `1` — Basic.
+      - `2` — Licensed.
+      - `4` — Unassigned without Meetings Basic.
+      - `99` — None (set only with `ssoCreate`).
+    </ResponseField>
+    <ResponseField name="role_id" type="string">
+      The unique ID of the user's assigned role.
+    </ResponseField>
+    <ResponseField name="pmi" type="number">
+      The user's personal meeting ID (PMI).
+    </ResponseField>
+    <ResponseField name="timezone" type="string">
+      The user's timezone.
+    </ResponseField>
+    <ResponseField name="dept" type="string">
+      The user's department.
+    </ResponseField>
+    <ResponseField name="group_ids" type="string[]">
+      The IDs of groups where the user is a member.
+    </ResponseField>
+    <ResponseField name="im_group_ids" type="string[]">
+      The IDs of IM directory groups where the user is a member.
+    </ResponseField>
+    <ResponseField name="host_key" type="string">
+      The user's host key. Sensitive. Only returned when `include_fields` is set to `host_key`.
+    </ResponseField>
+    <ResponseField name="verified" type="number">
+      Whether the user's email is verified: `0` (not verified) or `1` (verified).
+    </ResponseField>
+    <ResponseField name="last_login_time" type="string">
+      The user's last login time. This field has a three-day buffer period.
+    </ResponseField>
+    <ResponseField name="last_client_version" type="string">
+      The last client version the user used to log in.
+    </ResponseField>
+    <ResponseField name="user_created_at" type="string">
+      The date and time the user was created.
+    </ResponseField>
+    <ResponseField name="employee_unique_id" type="string">
+      The employee's unique ID. Only returned when SAML SSO is enabled or `login_type` is `101`.
+    </ResponseField>
+    <ResponseField name="plan_united_type" type="string">
+      The Zoom United plan type, if the user is enrolled. See the [Zoom United plans](https://zoom.us/pricing/zoom-bundles) for the full list of allowed values.
+    </ResponseField>
+    <ResponseField name="custom_attributes" type="object[]">
+      The user's custom attributes. Only returned when `include_fields` is set to `custom_attributes` and the user has custom attributes assigned.
+
+      <Expandable title="properties">
+        <ResponseField name="key" type="string">
+          The unique ID of the custom attribute.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          The name of the custom attribute.
+        </ResponseField>
+        <ResponseField name="value" type="string">
+          The value of the custom attribute.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
